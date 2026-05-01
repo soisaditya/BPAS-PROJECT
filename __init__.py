@@ -1,955 +1,203 @@
 """
-NumPy
-=====
+Contains the core of NumPy: ndarray, ufuncs, dtypes, etc.
 
-Provides
-  1. An array object of arbitrary homogeneous items
-  2. Fast mathematical operations over arrays
-  3. Linear Algebra, Fourier Transforms, Random Number Generation
-
-How to use the documentation
-----------------------------
-Documentation is available in two forms: docstrings provided
-with the code, and a loose standing reference guide, available from
-`the NumPy homepage <https://numpy.org>`_.
-
-We recommend exploring the docstrings using
-`IPython <https://ipython.org>`_, an advanced Python shell with
-TAB-completion and introspection capabilities.  See below for further
-instructions.
-
-The docstring examples assume that `numpy` has been imported as ``np``::
-
-  >>> import numpy as np
-
-Code snippets are indicated by three greater-than signs::
-
-  >>> x = 42
-  >>> x = x + 1
-
-Use the built-in ``help`` function to view a function's docstring::
-
-  >>> help(np.sort)
-  ... # doctest: +SKIP
-
-For some objects, ``np.info(obj)`` may provide additional help.  This is
-particularly true if you see the line "Help on ufunc object:" at the top
-of the help() page.  Ufuncs are implemented in C, not Python, for speed.
-The native Python help() does not know how to view their help, but our
-np.info() function does.
-
-Available subpackages
----------------------
-lib
-    Basic functions used by several sub-packages.
-random
-    Core Random Tools
-linalg
-    Core Linear Algebra Tools
-fft
-    Core FFT routines
-polynomial
-    Polynomial tools
-testing
-    NumPy testing tools
-distutils
-    Enhancements to distutils with support for
-    Fortran compilers support and more (for Python <= 3.11)
-
-Utilities
----------
-test
-    Run numpy unittests
-show_config
-    Show numpy build configuration
-__version__
-    NumPy version string
-
-Viewing documentation using IPython
------------------------------------
-
-Start IPython and import `numpy` usually under the alias ``np``: `import
-numpy as np`.  Then, directly past or use the ``%cpaste`` magic to paste
-examples into the shell.  To see which functions are available in `numpy`,
-type ``np.<TAB>`` (where ``<TAB>`` refers to the TAB key), or use
-``np.*cos*?<ENTER>`` (where ``<ENTER>`` refers to the ENTER key) to narrow
-down the list.  To view the docstring for a function, use
-``np.cos?<ENTER>`` (to view the docstring) and ``np.cos??<ENTER>`` (to view
-the source code).
-
-Copies vs. in-place operation
------------------------------
-Most of the functions in `numpy` return a copy of the array argument
-(e.g., `np.sort`).  In-place versions of these functions are often
-available as array methods, i.e. ``x = np.array([1,2,3]); x.sort()``.
-Exceptions to this rule are documented.
+Please note that this module is private.  All functions and objects
+are available in the main ``numpy`` namespace - use that instead.
 
 """
 
-
-# start delvewheel patch
-def _delvewheel_patch_1_11_2():
-    import os
-    if os.path.isdir(libs_dir := os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'numpy.libs'))):
-        os.add_dll_directory(libs_dir)
-
-
-_delvewheel_patch_1_11_2()
-del _delvewheel_patch_1_11_2
-# end delvewheel patch
-
 import os
-import sys
-import warnings
 
-# If a version with git hash was stored, use that instead
-from . import version
-from ._expired_attrs_2_0 import __expired_attributes__
-from ._globals import _CopyMode, _NoValue
-from .version import __version__
+from numpy.version import version as __version__
 
-# We first need to detect if we're being called as part of the numpy setup
-# procedure itself in a reliable manner.
+# disables OpenBLAS affinity setting of the main thread that limits
+# python threads or processes to one core
+env_added = []
+for envkey in ['OPENBLAS_MAIN_FREE']:
+    if envkey not in os.environ:
+        # Note: using `putenv` (and `unsetenv` further down) instead of updating
+        # `os.environ` on purpose to avoid a race condition, see gh-30627.
+        os.putenv(envkey, '1')
+        env_added.append(envkey)
+
 try:
-    __NUMPY_SETUP__  # noqa: B018
-except NameError:
-    __NUMPY_SETUP__ = False
+    from . import multiarray
+except ImportError as exc:
+    import sys
 
-if __NUMPY_SETUP__:
-    sys.stderr.write('Running from numpy source directory.\n')
-else:
-    # Allow distributors to run custom init code before importing numpy._core
-    from . import _distributor_init
-
-    try:
-        from numpy.__config__ import show_config
-    except ImportError as e:
-        if isinstance(e, ModuleNotFoundError) and e.name == "numpy.__config__":
-            # The __config__ module itself was not found, so add this info:
-            msg = """Error importing numpy: you should not try to import numpy from
-            its source directory; please exit the numpy source tree, and relaunch
-            your python interpreter from there."""
-            raise ImportError(msg) from e
+    # Bypass for the module re-initialization opt-out
+    if exc.msg == "cannot load module more than once per process":
         raise
 
-    from . import _core
-    from ._core import (
-        False_,
-        ScalarType,
-        True_,
-        abs,
-        absolute,
-        acos,
-        acosh,
-        add,
-        all,
-        allclose,
-        amax,
-        amin,
-        any,
-        arange,
-        arccos,
-        arccosh,
-        arcsin,
-        arcsinh,
-        arctan,
-        arctan2,
-        arctanh,
-        argmax,
-        argmin,
-        argpartition,
-        argsort,
-        argwhere,
-        around,
-        array,
-        array2string,
-        array_equal,
-        array_equiv,
-        array_repr,
-        array_str,
-        asanyarray,
-        asarray,
-        ascontiguousarray,
-        asfortranarray,
-        asin,
-        asinh,
-        astype,
-        atan,
-        atan2,
-        atanh,
-        atleast_1d,
-        atleast_2d,
-        atleast_3d,
-        base_repr,
-        binary_repr,
-        bitwise_and,
-        bitwise_count,
-        bitwise_invert,
-        bitwise_left_shift,
-        bitwise_not,
-        bitwise_or,
-        bitwise_right_shift,
-        bitwise_xor,
-        block,
-        bool,
-        bool_,
-        broadcast,
-        busday_count,
-        busday_offset,
-        busdaycalendar,
-        byte,
-        bytes_,
-        can_cast,
-        cbrt,
-        cdouble,
-        ceil,
-        character,
-        choose,
-        clip,
-        clongdouble,
-        complex64,
-        complex128,
-        complexfloating,
-        compress,
-        concat,
-        concatenate,
-        conj,
-        conjugate,
-        convolve,
-        copysign,
-        copyto,
-        correlate,
-        cos,
-        cosh,
-        count_nonzero,
-        cross,
-        csingle,
-        cumprod,
-        cumsum,
-        cumulative_prod,
-        cumulative_sum,
-        datetime64,
-        datetime_as_string,
-        datetime_data,
-        deg2rad,
-        degrees,
-        diagonal,
-        divide,
-        divmod,
-        dot,
-        double,
-        dtype,
-        e,
-        einsum,
-        einsum_path,
-        empty,
-        empty_like,
-        equal,
-        errstate,
-        euler_gamma,
-        exp,
-        exp2,
-        expm1,
-        fabs,
-        finfo,
-        flatiter,
-        flatnonzero,
-        flexible,
-        float16,
-        float32,
-        float64,
-        float_power,
-        floating,
-        floor,
-        floor_divide,
-        fmax,
-        fmin,
-        fmod,
-        format_float_positional,
-        format_float_scientific,
-        frexp,
-        from_dlpack,
-        frombuffer,
-        fromfile,
-        fromfunction,
-        fromiter,
-        frompyfunc,
-        fromstring,
-        full,
-        full_like,
-        gcd,
-        generic,
-        geomspace,
-        get_printoptions,
-        getbufsize,
-        geterr,
-        geterrcall,
-        greater,
-        greater_equal,
-        half,
-        heaviside,
-        hstack,
-        hypot,
-        identity,
-        iinfo,
-        indices,
-        inexact,
-        inf,
-        inner,
-        int8,
-        int16,
-        int32,
-        int64,
-        int_,
-        intc,
-        integer,
-        intp,
-        invert,
-        is_busday,
-        isclose,
-        isdtype,
-        isfinite,
-        isfortran,
-        isinf,
-        isnan,
-        isnat,
-        isscalar,
-        issubdtype,
-        lcm,
-        ldexp,
-        left_shift,
-        less,
-        less_equal,
-        lexsort,
-        linspace,
-        little_endian,
-        log,
-        log1p,
-        log2,
-        log10,
-        logaddexp,
-        logaddexp2,
-        logical_and,
-        logical_not,
-        logical_or,
-        logical_xor,
-        logspace,
-        long,
-        longdouble,
-        longlong,
-        matmul,
-        matrix_transpose,
-        matvec,
-        max,
-        maximum,
-        may_share_memory,
-        mean,
-        memmap,
-        min,
-        min_scalar_type,
-        minimum,
-        mod,
-        modf,
-        moveaxis,
-        multiply,
-        nan,
-        ndarray,
-        ndim,
-        nditer,
-        negative,
-        nested_iters,
-        newaxis,
-        nextafter,
-        nonzero,
-        not_equal,
-        number,
-        object_,
-        ones,
-        ones_like,
-        outer,
-        partition,
-        permute_dims,
-        pi,
-        positive,
-        pow,
-        power,
-        printoptions,
-        prod,
-        promote_types,
-        ptp,
-        put,
-        putmask,
-        rad2deg,
-        radians,
-        ravel,
-        recarray,
-        reciprocal,
-        record,
-        remainder,
-        repeat,
-        require,
-        reshape,
-        resize,
-        result_type,
-        right_shift,
-        rint,
-        roll,
-        rollaxis,
-        round,
-        sctypeDict,
-        searchsorted,
-        set_printoptions,
-        setbufsize,
-        seterr,
-        seterrcall,
-        shape,
-        shares_memory,
-        short,
-        sign,
-        signbit,
-        signedinteger,
-        sin,
-        single,
-        sinh,
-        size,
-        sort,
-        spacing,
-        sqrt,
-        square,
-        squeeze,
-        stack,
-        std,
-        str_,
-        subtract,
-        sum,
-        swapaxes,
-        take,
-        tan,
-        tanh,
-        tensordot,
-        timedelta64,
-        trace,
-        transpose,
-        true_divide,
-        trunc,
-        typecodes,
-        ubyte,
-        ufunc,
-        uint,
-        uint8,
-        uint16,
-        uint32,
-        uint64,
-        uintc,
-        uintp,
-        ulong,
-        ulonglong,
-        unsignedinteger,
-        unstack,
-        ushort,
-        var,
-        vdot,
-        vecdot,
-        vecmat,
-        void,
-        vstack,
-        where,
-        zeros,
-        zeros_like,
-    )
-
-    # NOTE: It's still under discussion whether these aliases
-    # should be removed.
-    for ta in ["float96", "float128", "complex192", "complex256"]:
-        try:
-            globals()[ta] = getattr(_core, ta)
-        except AttributeError:
-            pass
-    del ta
-
-    from . import lib, matrixlib as _mat
-    from .lib import scimath as emath
-    from .lib._arraypad_impl import pad
-    from .lib._arraysetops_impl import (
-        ediff1d,
-        intersect1d,
-        isin,
-        setdiff1d,
-        setxor1d,
-        union1d,
-        unique,
-        unique_all,
-        unique_counts,
-        unique_inverse,
-        unique_values,
-    )
-    from .lib._function_base_impl import (
-        angle,
-        append,
-        asarray_chkfinite,
-        average,
-        bartlett,
-        bincount,
-        blackman,
-        copy,
-        corrcoef,
-        cov,
-        delete,
-        diff,
-        digitize,
-        extract,
-        flip,
-        gradient,
-        hamming,
-        hanning,
-        i0,
-        insert,
-        interp,
-        iterable,
-        kaiser,
-        median,
-        meshgrid,
-        percentile,
-        piecewise,
-        place,
-        quantile,
-        rot90,
-        select,
-        sinc,
-        sort_complex,
-        trapezoid,
-        trim_zeros,
-        unwrap,
-        vectorize,
-    )
-    from .lib._histograms_impl import histogram, histogram_bin_edges, histogramdd
-    from .lib._index_tricks_impl import (
-        c_,
-        diag_indices,
-        diag_indices_from,
-        fill_diagonal,
-        index_exp,
-        ix_,
-        mgrid,
-        ndenumerate,
-        ndindex,
-        ogrid,
-        r_,
-        ravel_multi_index,
-        s_,
-        unravel_index,
-    )
-    from .lib._nanfunctions_impl import (
-        nanargmax,
-        nanargmin,
-        nancumprod,
-        nancumsum,
-        nanmax,
-        nanmean,
-        nanmedian,
-        nanmin,
-        nanpercentile,
-        nanprod,
-        nanquantile,
-        nanstd,
-        nansum,
-        nanvar,
-    )
-    from .lib._npyio_impl import (
-        fromregex,
-        genfromtxt,
-        load,
-        loadtxt,
-        packbits,
-        save,
-        savetxt,
-        savez,
-        savez_compressed,
-        unpackbits,
-    )
-    from .lib._polynomial_impl import (
-        poly,
-        poly1d,
-        polyadd,
-        polyder,
-        polydiv,
-        polyfit,
-        polyint,
-        polymul,
-        polysub,
-        polyval,
-        roots,
-    )
-    from .lib._shape_base_impl import (
-        apply_along_axis,
-        apply_over_axes,
-        array_split,
-        column_stack,
-        dsplit,
-        dstack,
-        expand_dims,
-        hsplit,
-        kron,
-        put_along_axis,
-        row_stack,
-        split,
-        take_along_axis,
-        tile,
-        vsplit,
-    )
-    from .lib._stride_tricks_impl import (
-        broadcast_arrays,
-        broadcast_shapes,
-        broadcast_to,
-    )
-    from .lib._twodim_base_impl import (
-        diag,
-        diagflat,
-        eye,
-        fliplr,
-        flipud,
-        histogram2d,
-        mask_indices,
-        tri,
-        tril,
-        tril_indices,
-        tril_indices_from,
-        triu,
-        triu_indices,
-        triu_indices_from,
-        vander,
-    )
-    from .lib._type_check_impl import (
-        common_type,
-        imag,
-        iscomplex,
-        iscomplexobj,
-        isreal,
-        isrealobj,
-        mintypecode,
-        nan_to_num,
-        real,
-        real_if_close,
-        typename,
-    )
-    from .lib._ufunclike_impl import fix, isneginf, isposinf
-    from .lib._utils_impl import get_include, info, show_runtime
-    from .matrixlib import asmatrix, bmat, matrix
-
-    # public submodules are imported lazily, therefore are accessible from
-    # __getattr__. Note that `distutils` (deprecated) and `array_api`
-    # (experimental label) are not added here, because `from numpy import *`
-    # must not raise any warnings - that's too disruptive.
-    __numpy_submodules__ = {
-        "linalg", "fft", "dtypes", "random", "polynomial", "ma",
-        "exceptions", "lib", "ctypeslib", "testing", "typing",
-        "f2py", "test", "rec", "char", "core", "strings",
-    }
-
-    # We build warning messages for former attributes
-    _msg = (
-        "module 'numpy' has no attribute '{n}'.\n"
-        "`np.{n}` was a deprecated alias for the builtin `{n}`. "
-        "To avoid this error in existing code, use `{n}` by itself. "
-        "Doing this will not modify any behavior and is safe. {extended_msg}\n"
-        "The aliases was originally deprecated in NumPy 1.20; for more "
-        "details and guidance see the original release note at:\n"
-        "    https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations")
-
-    _specific_msg = (
-        "If you specifically wanted the numpy scalar type, use `np.{}` here.")
-
-    _int_extended_msg = (
-        "When replacing `np.{}`, you may wish to use e.g. `np.int64` "
-        "or `np.int32` to specify the precision. If you wish to review "
-        "your current use, check the release note link for "
-        "additional information.")
-
-    _type_info = [
-        ("object", ""),  # The NumPy scalar only exists by name.
-        ("float", _specific_msg.format("float64")),
-        ("complex", _specific_msg.format("complex128")),
-        ("str", _specific_msg.format("str_")),
-        ("int", _int_extended_msg.format("int"))]
-
-    __former_attrs__ = {
-         n: _msg.format(n=n, extended_msg=extended_msg)
-         for n, extended_msg in _type_info
-     }
-
-    # Some of these could be defined right away, but most were aliases to
-    # the Python objects and only removed in NumPy 1.24.  Defining them should
-    # probably wait for NumPy 1.26 or 2.0.
-    # When defined, these should possibly not be added to `__all__` to avoid
-    # import with `from numpy import *`.
-    __future_scalars__ = {"str", "bytes", "object"}
-
-    __array_api_version__ = "2024.12"
-
-    from ._array_api_info import __array_namespace_info__
-
-    __all__ = list(
-        __numpy_submodules__ |
-        set(_core.__all__) |
-        set(_mat.__all__) |
-        set(lib._histograms_impl.__all__) |
-        set(lib._nanfunctions_impl.__all__) |
-        set(lib._function_base_impl.__all__) |
-        set(lib._twodim_base_impl.__all__) |
-        set(lib._shape_base_impl.__all__) |
-        set(lib._type_check_impl.__all__) |
-        set(lib._arraysetops_impl.__all__) |
-        set(lib._ufunclike_impl.__all__) |
-        set(lib._arraypad_impl.__all__) |
-        set(lib._utils_impl.__all__) |
-        set(lib._stride_tricks_impl.__all__) |
-        set(lib._polynomial_impl.__all__) |
-        set(lib._npyio_impl.__all__) |
-        set(lib._index_tricks_impl.__all__) |
-        {"emath", "show_config", "__version__", "__array_namespace_info__"}
-    )
-
-    # Filter out Cython harmless warnings
-    warnings.filterwarnings("ignore", message="numpy.dtype size changed")
-    warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
-    warnings.filterwarnings("ignore", message="numpy.ndarray size changed")
-
-    def __getattr__(attr):
-        # Warn for expired attributes
-        import warnings
-
-        if attr == "linalg":
-            import numpy.linalg as linalg
-            return linalg
-        elif attr == "fft":
-            import numpy.fft as fft
-            return fft
-        elif attr == "dtypes":
-            import numpy.dtypes as dtypes
-            return dtypes
-        elif attr == "random":
-            import numpy.random as random
-            return random
-        elif attr == "polynomial":
-            import numpy.polynomial as polynomial
-            return polynomial
-        elif attr == "ma":
-            import numpy.ma as ma
-            return ma
-        elif attr == "ctypeslib":
-            import numpy.ctypeslib as ctypeslib
-            return ctypeslib
-        elif attr == "exceptions":
-            import numpy.exceptions as exceptions
-            return exceptions
-        elif attr == "testing":
-            import numpy.testing as testing
-            return testing
-        elif attr == "matlib":
-            import numpy.matlib as matlib
-            return matlib
-        elif attr == "f2py":
-            import numpy.f2py as f2py
-            return f2py
-        elif attr == "typing":
-            import numpy.typing as typing
-            return typing
-        elif attr == "rec":
-            import numpy.rec as rec
-            return rec
-        elif attr == "char":
-            import numpy.char as char
-            return char
-        elif attr == "array_api":
-            raise AttributeError("`numpy.array_api` is not available from "
-                                 "numpy 2.0 onwards", name=None)
-        elif attr == "core":
-            import numpy.core as core
-            return core
-        elif attr == "strings":
-            import numpy.strings as strings
-            return strings
-        elif attr == "distutils":
-            if 'distutils' in __numpy_submodules__:
-                import numpy.distutils as distutils
-                return distutils
-            else:
-                raise AttributeError("`numpy.distutils` is not available from "
-                                     "Python 3.12 onwards", name=None)
-
-        if attr in __future_scalars__:
-            # And future warnings for those that will change, but also give
-            # the AttributeError
-            warnings.warn(
-                f"In the future `np.{attr}` will be defined as the "
-                "corresponding NumPy scalar.", FutureWarning, stacklevel=2)
-
-        if attr in __former_attrs__:
-            raise AttributeError(__former_attrs__[attr], name=None)
-
-        if attr in __expired_attributes__:
-            raise AttributeError(
-                f"`np.{attr}` was removed in the NumPy 2.0 release. "
-                f"{__expired_attributes__[attr]}",
-                name=None
-            )
-
-        if attr == "chararray":
-            warnings.warn(
-                "`np.chararray` is deprecated and will be removed from "
-                "the main namespace in the future. Use an array with a string "
-                "or bytes dtype instead.", DeprecationWarning, stacklevel=2)
-            import numpy.char as char
-            return char.chararray
-
-        raise AttributeError(f"module {__name__!r} has no attribute {attr!r}")
-
-    def __dir__():
-        public_symbols = (
-            globals().keys() | __numpy_submodules__
-        )
-        public_symbols -= {
-            "matrixlib", "matlib", "tests", "conftest", "version",
-            "distutils", "array_api"
-        }
-        return list(public_symbols)
-
-    # Pytest testing
-    from numpy._pytesttester import PytestTester
-    test = PytestTester(__name__)
-    del PytestTester
-
-    def _sanity_check():
-        """
-        Quick sanity checks for common bugs caused by environment.
-        There are some cases e.g. with wrong BLAS ABI that cause wrong
-        results under specific runtime conditions that are not necessarily
-        achieved during test suite runs, and it is useful to catch those early.
-
-        See https://github.com/numpy/numpy/issues/8577 and other
-        similar bug reports.
-
-        """
-        try:
-            x = ones(2, dtype=float32)
-            if not abs(x.dot(x) - float32(2.0)) < 1e-5:
-                raise AssertionError
-        except AssertionError:
-            msg = ("The current Numpy installation ({!r}) fails to "
-                   "pass simple sanity checks. This can be caused for example "
-                   "by incorrect BLAS library being linked in, or by mixing "
-                   "package managers (pip, conda, apt, ...). Search closed "
-                   "numpy issues for similar problems.")
-            raise RuntimeError(msg.format(__file__)) from None
-
-    _sanity_check()
-    del _sanity_check
-
-    def _mac_os_check():
-        """
-        Quick Sanity check for Mac OS look for accelerate build bugs.
-        Testing numpy polyfit calls init_dgelsd(LAPACK)
-        """
-        try:
-            c = array([3., 2., 1.])
-            x = linspace(0, 2, 5)
-            y = polyval(c, x)
-            _ = polyfit(x, y, 2, cov=True)
-        except ValueError:
-            pass
-
-    if sys.platform == "darwin":
-        from . import exceptions
-        with warnings.catch_warnings(record=True) as w:
-            _mac_os_check()
-            # Throw runtime error, if the test failed
-            # Check for warning and report the error_message
-            if len(w) > 0:
-                for _wn in w:
-                    if _wn.category is exceptions.RankWarning:
-                        # Ignore other warnings, they may not be relevant (see gh-25433)
-                        error_message = (
-                            f"{_wn.category.__name__}: {_wn.message}"
-                        )
-                        msg = (
-                            "Polyfit sanity test emitted a warning, most likely due "
-                            "to using a buggy Accelerate backend."
-                            "\nIf you compiled yourself, more information is available at:"  # noqa: E501
-                            "\nhttps://numpy.org/devdocs/building/index.html"
-                            "\nOtherwise report this to the vendor "
-                            f"that provided NumPy.\n\n{error_message}\n")
-                        raise RuntimeError(msg)
-                del _wn
-            del w
-    del _mac_os_check
-
-    def blas_fpe_check():
-        # Check if BLAS adds spurious FPEs, mostly seen on M4 arms with Accelerate.
-        with errstate(all='raise'):
-            x = ones((20, 20))
-            try:
-                x @ x
-            except FloatingPointError:
-                res = _core._multiarray_umath._blas_supports_fpe(False)
-                if res:  # res was not modified (hardcoded to True for now)
-                    warnings.warn(
-                        "Spurious warnings given by blas but suppression not "
-                        "set up on this platform. Please open a NumPy issue.",
-                        UserWarning, stacklevel=2)
-
-    blas_fpe_check()
-    del blas_fpe_check
-
-    def hugepage_setup():
-        """
-        We usually use madvise hugepages support, but on some old kernels it
-        is slow and thus better avoided. Specifically kernel version 4.6
-        had a bug fix which probably fixed this:
-        https://github.com/torvalds/linux/commit/7cf91a98e607c2f935dbcc177d70011e95b8faff
-        """
-        use_hugepage = os.environ.get("NUMPY_MADVISE_HUGEPAGE", None)
-        if sys.platform == "linux" and use_hugepage is None:
-            # If there is an issue with parsing the kernel version,
-            # set use_hugepage to 0. Usage of LooseVersion will handle
-            # the kernel version parsing better, but avoided since it
-            # will increase the import time.
-            # See: #16679 for related discussion.
-            try:
-                use_hugepage = 1
-                kernel_version = os.uname().release.split(".")[:2]
-                kernel_version = tuple(int(v) for v in kernel_version)
-                if kernel_version < (4, 6):
-                    use_hugepage = 0
-            except ValueError:
-                use_hugepage = 0
-        elif use_hugepage is None:
-            # This is not Linux, so it should not matter, just enable anyway
-            use_hugepage = 1
+    # Basically always, the problem should be that the C module is wrong/missing...
+    if (
+        isinstance(exc, ModuleNotFoundError)
+        and exc.name == "numpy._core._multiarray_umath"
+    ):
+        import sys
+        candidates = []
+        for path in __path__:
+            candidates.extend(
+                f for f in os.listdir(path) if f.startswith("_multiarray_umath"))
+        if len(candidates) == 0:
+            bad_c_module_info = (
+                "We found no compiled module, did NumPy build successfully?\n")
         else:
-            use_hugepage = int(use_hugepage)
-        return use_hugepage
+            candidate_str = '\n  * '.join(candidates)
+            # cache_tag is documented to be possibly None, so just use name if it is
+            # this guesses at cache_tag being the same as the extension module scheme
+            tag = sys.implementation.cache_tag or sys.implementation.name
+            bad_c_module_info = (
+                f"The following compiled module files exist, but seem incompatible\n"
+                f"with with either python '{tag}' or the "
+                f"platform '{sys.platform}':\n\n  * {candidate_str}\n"
+            )
+    else:
+        bad_c_module_info = ""
 
-    # Note that this will currently only make a difference on Linux
-    _core.multiarray._set_madvise_hugepage(hugepage_setup())
-    del hugepage_setup
+    major, minor, *_ = sys.version_info
+    msg = f"""
 
-    # Give a warning if NumPy is reloaded or imported on a sub-interpreter
-    # We do this from python, since the C-module may not be reloaded and
-    # it is tidier organized.
-    _core.multiarray._multiarray_umath._reload_guard()
+IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
 
-    # TODO: Remove the environment variable entirely now that it is "weak"
-    if (os.environ.get("NPY_PROMOTION_STATE", "weak") != "weak"):
-        warnings.warn(
-            "NPY_PROMOTION_STATE was a temporary feature for NumPy 2.0 "
-            "transition and is ignored after NumPy 2.2.",
-            UserWarning, stacklevel=2)
+Importing the numpy C-extensions failed. This error can happen for
+many reasons, often due to issues with your setup or how NumPy was
+installed.
+{bad_c_module_info}
+We have compiled some common reasons and troubleshooting tips at:
 
-    # Tell PyInstaller where to find hook-numpy.py
-    def _pyinstaller_hooks_dir():
-        from pathlib import Path
-        return [str(Path(__file__).with_name("_pyinstaller").resolve())]
+    https://numpy.org/devdocs/user/troubleshooting-importerror.html
+
+Please note and check the following:
+
+  * The Python version is: Python {major}.{minor} from "{sys.executable}"
+  * The NumPy version is: "{__version__}"
+
+and make sure that they are the versions you expect.
+
+Please carefully study the information and documentation linked above.
+This is unlikely to be a NumPy issue but will be caused by a bad install
+or environment on your machine.
+
+Original error was: {exc}
+"""
+
+    raise ImportError(msg) from exc
+finally:
+    for envkey in env_added:
+        os.unsetenv(envkey)
+del envkey
+del env_added
+del os
+
+from . import umath
+
+# Check that multiarray,umath are pure python modules wrapping
+# _multiarray_umath and not either of the old c-extension modules
+if not (hasattr(multiarray, '_multiarray_umath') and
+        hasattr(umath, '_multiarray_umath')):
+    import sys
+    path = sys.modules['numpy'].__path__
+    msg = ("Something is wrong with the numpy installation. "
+        "While importing we detected an older version of "
+        "numpy in {}. One method of fixing this is to repeatedly uninstall "
+        "numpy until none is found, then reinstall this version.")
+    raise ImportError(msg.format(path))
+
+from . import numerictypes as nt
+from .numerictypes import sctypeDict, sctypes
+
+multiarray.set_typeDict(nt.sctypeDict)
+from . import einsumfunc, fromnumeric, function_base, getlimits, numeric, shape_base
+from .einsumfunc import *
+from .fromnumeric import *
+from .function_base import *
+from .getlimits import *
+
+# Note: module name memmap is overwritten by a class with same name
+from .memmap import *
+from .numeric import *
+from .records import recarray, record
+from .shape_base import *
+
+del nt
+
+# do this after everything else, to minimize the chance of this misleadingly
+# appearing in an import-time traceback
+# add these for module-freeze analysis (like PyInstaller)
+from . import (
+    _add_newdocs,
+    _add_newdocs_scalars,
+    _dtype,
+    _dtype_ctypes,
+    _internal,
+    _methods,
+)
+from .numeric import absolute as abs
+
+acos = numeric.arccos
+acosh = numeric.arccosh
+asin = numeric.arcsin
+asinh = numeric.arcsinh
+atan = numeric.arctan
+atanh = numeric.arctanh
+atan2 = numeric.arctan2
+concat = numeric.concatenate
+bitwise_left_shift = numeric.left_shift
+bitwise_invert = numeric.invert
+bitwise_right_shift = numeric.right_shift
+permute_dims = numeric.transpose
+pow = numeric.power
+
+__all__ = [
+    "abs", "acos", "acosh", "asin", "asinh", "atan", "atanh", "atan2",
+    "bitwise_invert", "bitwise_left_shift", "bitwise_right_shift", "concat",
+    "pow", "permute_dims", "memmap", "sctypeDict", "record", "recarray"
+]
+__all__ += numeric.__all__
+__all__ += function_base.__all__
+__all__ += getlimits.__all__
+__all__ += shape_base.__all__
+__all__ += einsumfunc.__all__
 
 
-# Remove symbols imported for internal use
-del os, sys, warnings
+def _ufunc_reduce(func):
+    # Report the `__name__`. pickle will try to find the module. Note that
+    # pickle supports for this `__name__` to be a `__qualname__`. It may
+    # make sense to add a `__qualname__` to ufuncs, to allow this more
+    # explicitly (Numba has ufuncs as attributes).
+    # See also: https://github.com/dask/distributed/issues/3450
+    return func.__name__
+
+
+def _DType_reconstruct(scalar_type):
+    # This is a work-around to pickle type(np.dtype(np.float64)), etc.
+    # and it should eventually be replaced with a better solution, e.g. when
+    # DTypes become HeapTypes.
+    return type(dtype(scalar_type))
+
+
+def _DType_reduce(DType):
+    # As types/classes, most DTypes can simply be pickled by their name:
+    if not DType._legacy or DType.__module__ == "numpy.dtypes":
+        return DType.__name__
+
+    # However, user defined legacy dtypes (like rational) do not end up in
+    # `numpy.dtypes` as module and do not have a public class at all.
+    # For these, we pickle them by reconstructing them from the scalar type:
+    scalar_type = DType.type
+    return _DType_reconstruct, (scalar_type,)
+
+
+import copyreg
+
+copyreg.pickle(ufunc, _ufunc_reduce)
+copyreg.pickle(type(dtype), _DType_reduce, _DType_reconstruct)
+
+# Unclutter namespace (must keep _*_reconstruct for unpickling)
+del copyreg, _ufunc_reduce, _DType_reduce
+
+from numpy._pytesttester import PytestTester
+
+test = PytestTester(__name__)
+del PytestTester
