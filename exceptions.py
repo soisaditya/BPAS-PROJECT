@@ -1,166 +1,246 @@
-import typing as t
+"""
+Exceptions and Warnings
+=======================
 
-if t.TYPE_CHECKING:
-    from .runtime import Undefined
+General exceptions used by NumPy.  Note that some exceptions may be module
+specific, such as linear algebra errors.
+
+.. versionadded:: NumPy 1.25
+
+    The exceptions module is new in NumPy 1.25.
+
+.. currentmodule:: numpy.exceptions
+
+Warnings
+--------
+.. autosummary::
+   :toctree: generated/
+
+   ComplexWarning             Given when converting complex to real.
+   VisibleDeprecationWarning  Same as a DeprecationWarning, but more visible.
+   RankWarning                Issued when the design matrix is rank deficient.
+
+Exceptions
+----------
+.. autosummary::
+   :toctree: generated/
+
+    AxisError          Given when an axis was invalid.
+    DTypePromotionError   Given when no common dtype could be found.
+    TooHardError       Error specific to `numpy.shares_memory`.
+
+"""
 
 
-class TemplateError(Exception):
-    """Baseclass for all template errors."""
-
-    def __init__(self, message: t.Optional[str] = None) -> None:
-        super().__init__(message)
-
-    @property
-    def message(self) -> t.Optional[str]:
-        return self.args[0] if self.args else None
+__all__ = [
+    "ComplexWarning", "VisibleDeprecationWarning", "ModuleDeprecationWarning",
+    "TooHardError", "AxisError", "DTypePromotionError"]
 
 
-class TemplateNotFound(IOError, LookupError, TemplateError):
-    """Raised if a template does not exist.
+# Disallow reloading this module so as to preserve the identities of the
+# classes defined here.
+if '_is_loaded' in globals():
+    raise RuntimeError('Reloading numpy._globals is not allowed')
+_is_loaded = True
 
-    .. versionchanged:: 2.11
-        If the given name is :class:`Undefined` and no message was
-        provided, an :exc:`UndefinedError` is raised.
+
+class ComplexWarning(RuntimeWarning):
+    """
+    The warning raised when casting a complex dtype to a real dtype.
+
+    As implemented, casting a complex number to a real discards its imaginary
+    part, but this behavior may not be what the user actually wants.
+
+    """
+    pass
+
+
+class ModuleDeprecationWarning(DeprecationWarning):
+    """Module deprecation warning.
+
+    .. warning::
+
+        This warning should not be used, since nose testing is not relevant
+        anymore.
+
+    The nose tester turns ordinary Deprecation warnings into test failures.
+    That makes it hard to deprecate whole modules, because they get
+    imported by default. So this is a special Deprecation warning that the
+    nose tester will let pass without making tests fail.
+
+    """
+    pass
+
+
+class VisibleDeprecationWarning(UserWarning):
+    """Visible deprecation warning.
+
+    By default, python will not show deprecation warnings, so this class
+    can be used when a very visible warning is helpful, for example because
+    the usage is most likely a user bug.
+
+    """
+    pass
+
+
+class RankWarning(RuntimeWarning):
+    """Matrix rank warning.
+
+    Issued by polynomial functions when the design matrix is rank deficient.
+
+    """
+    pass
+
+
+# Exception used in shares_memory()
+class TooHardError(RuntimeError):
+    """``max_work`` was exceeded.
+
+    This is raised whenever the maximum number of candidate solutions
+    to consider specified by the ``max_work`` parameter is exceeded.
+    Assigning a finite number to ``max_work`` may have caused the operation
+    to fail.
+
+    """
+    pass
+
+
+class AxisError(ValueError, IndexError):
+    """Axis supplied was invalid.
+
+    This is raised whenever an ``axis`` parameter is specified that is larger
+    than the number of array dimensions.
+    For compatibility with code written against older numpy versions, which
+    raised a mixture of :exc:`ValueError` and :exc:`IndexError` for this
+    situation, this exception subclasses both to ensure that
+    ``except ValueError`` and ``except IndexError`` statements continue
+    to catch ``AxisError``.
+
+    Parameters
+    ----------
+    axis : int or str
+        The out of bounds axis or a custom exception message.
+        If an axis is provided, then `ndim` should be specified as well.
+    ndim : int, optional
+        The number of array dimensions.
+    msg_prefix : str, optional
+        A prefix for the exception message.
+
+    Attributes
+    ----------
+    axis : int, optional
+        The out of bounds axis or ``None`` if a custom exception
+        message was provided. This should be the axis as passed by
+        the user, before any normalization to resolve negative indices.
+
+        .. versionadded:: 1.22
+    ndim : int, optional
+        The number of array dimensions or ``None`` if a custom exception
+        message was provided.
+
+        .. versionadded:: 1.22
+
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> array_1d = np.arange(10)
+    >>> np.cumsum(array_1d, axis=1)
+    Traceback (most recent call last):
+      ...
+    numpy.exceptions.AxisError: axis 1 is out of bounds for array of dimension 1
+
+    Negative axes are preserved:
+
+    >>> np.cumsum(array_1d, axis=-2)
+    Traceback (most recent call last):
+      ...
+    numpy.exceptions.AxisError: axis -2 is out of bounds for array of dimension 1
+
+    The class constructor generally takes the axis and arrays'
+    dimensionality as arguments:
+
+    >>> print(np.exceptions.AxisError(2, 1, msg_prefix='error'))
+    error: axis 2 is out of bounds for array of dimension 1
+
+    Alternatively, a custom exception message can be passed:
+
+    >>> print(np.exceptions.AxisError('Custom error message'))
+    Custom error message
+
     """
 
-    # Silence the Python warning about message being deprecated since
-    # it's not valid here.
-    message: t.Optional[str] = None
+    __slots__ = ("_msg", "axis", "ndim")
 
-    def __init__(
-        self,
-        name: t.Optional[t.Union[str, "Undefined"]],
-        message: t.Optional[str] = None,
-    ) -> None:
-        IOError.__init__(self, name)
+    def __init__(self, axis, ndim=None, msg_prefix=None):
+        if ndim is msg_prefix is None:
+            # single-argument form: directly set the error message
+            self._msg = axis
+            self.axis = None
+            self.ndim = None
+        else:
+            self._msg = msg_prefix
+            self.axis = axis
+            self.ndim = ndim
 
-        if message is None:
-            from .runtime import Undefined
+    def __str__(self):
+        axis = self.axis
+        ndim = self.ndim
 
-            if isinstance(name, Undefined):
-                name._fail_with_undefined_error()
-
-            message = name
-
-        self.message = message
-        self.name = name
-        self.templates = [name]
-
-    def __str__(self) -> str:
-        return str(self.message)
-
-
-class TemplatesNotFound(TemplateNotFound):
-    """Like :class:`TemplateNotFound` but raised if multiple templates
-    are selected.  This is a subclass of :class:`TemplateNotFound`
-    exception, so just catching the base exception will catch both.
-
-    .. versionchanged:: 2.11
-        If a name in the list of names is :class:`Undefined`, a message
-        about it being undefined is shown rather than the empty string.
-
-    .. versionadded:: 2.2
-    """
-
-    def __init__(
-        self,
-        names: t.Sequence[t.Union[str, "Undefined"]] = (),
-        message: t.Optional[str] = None,
-    ) -> None:
-        if message is None:
-            from .runtime import Undefined
-
-            parts = []
-
-            for name in names:
-                if isinstance(name, Undefined):
-                    parts.append(name._undefined_message)
-                else:
-                    parts.append(name)
-
-            parts_str = ", ".join(map(str, parts))
-            message = f"none of the templates given were found: {parts_str}"
-
-        super().__init__(names[-1] if names else None, message)
-        self.templates = list(names)
+        if axis is ndim is None:
+            return self._msg
+        else:
+            msg = f"axis {axis} is out of bounds for array of dimension {ndim}"
+            if self._msg is not None:
+                msg = f"{self._msg}: {msg}"
+            return msg
 
 
-class TemplateSyntaxError(TemplateError):
-    """Raised to tell the user that there is a problem with the template."""
+class DTypePromotionError(TypeError):
+    """Multiple DTypes could not be converted to a common one.
 
-    def __init__(
-        self,
-        message: str,
-        lineno: int,
-        name: t.Optional[str] = None,
-        filename: t.Optional[str] = None,
-    ) -> None:
-        super().__init__(message)
-        self.lineno = lineno
-        self.name = name
-        self.filename = filename
-        self.source: t.Optional[str] = None
+    This exception derives from ``TypeError`` and is raised whenever dtypes
+    cannot be converted to a single common one.  This can be because they
+    are of a different category/class or incompatible instances of the same
+    one (see Examples).
 
-        # this is set to True if the debug.translate_syntax_error
-        # function translated the syntax error into a new traceback
-        self.translated = False
+    Notes
+    -----
+    Many functions will use promotion to find the correct result and
+    implementation.  For these functions the error will typically be chained
+    with a more specific error indicating that no implementation was found
+    for the input dtypes.
 
-    def __str__(self) -> str:
-        # for translated errors we only return the message
-        if self.translated:
-            return t.cast(str, self.message)
+    Typically promotion should be considered "invalid" between the dtypes of
+    two arrays when `arr1 == arr2` can safely return all ``False`` because the
+    dtypes are fundamentally different.
 
-        # otherwise attach some stuff
-        location = f"line {self.lineno}"
-        name = self.filename or self.name
-        if name:
-            location = f'File "{name}", {location}'
-        lines = [t.cast(str, self.message), "  " + location]
+    Examples
+    --------
+    Datetimes and complex numbers are incompatible classes and cannot be
+    promoted:
 
-        # if the source is set, add the line to the output
-        if self.source is not None:
-            try:
-                line = self.source.splitlines()[self.lineno - 1]
-            except IndexError:
-                pass
-            else:
-                lines.append("    " + line.strip())
+    >>> import numpy as np
+    >>> np.result_type(np.dtype("M8[s]"), np.complex128)  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+     ...
+    DTypePromotionError: The DType <class 'numpy.dtype[datetime64]'> could not
+    be promoted by <class 'numpy.dtype[complex128]'>. This means that no common
+    DType exists for the given inputs. For example they cannot be stored in a
+    single array unless the dtype is `object`. The full list of DTypes is:
+    (<class 'numpy.dtype[datetime64]'>, <class 'numpy.dtype[complex128]'>)
 
-        return "\n".join(lines)
+    For example for structured dtypes, the structure can mismatch and the
+    same ``DTypePromotionError`` is given when two structured dtypes with
+    a mismatch in their number of fields is given:
 
-    def __reduce__(self):  # type: ignore
-        # https://bugs.python.org/issue1692335 Exceptions that take
-        # multiple required arguments have problems with pickling.
-        # Without this, raises TypeError: __init__() missing 1 required
-        # positional argument: 'lineno'
-        return self.__class__, (self.message, self.lineno, self.name, self.filename)
+    >>> dtype1 = np.dtype([("field1", np.float64), ("field2", np.int64)])
+    >>> dtype2 = np.dtype([("field1", np.float64)])
+    >>> np.promote_types(dtype1, dtype2)  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+     ...
+    DTypePromotionError: field names `('field1', 'field2')` and `('field1',)`
+    mismatch.
 
-
-class TemplateAssertionError(TemplateSyntaxError):
-    """Like a template syntax error, but covers cases where something in the
-    template caused an error at compile time that wasn't necessarily caused
-    by a syntax error.  However it's a direct subclass of
-    :exc:`TemplateSyntaxError` and has the same attributes.
-    """
-
-
-class TemplateRuntimeError(TemplateError):
-    """A generic runtime error in the template engine.  Under some situations
-    Jinja may raise this exception.
-    """
-
-
-class UndefinedError(TemplateRuntimeError):
-    """Raised if a template tries to operate on :class:`Undefined`."""
-
-
-class SecurityError(TemplateRuntimeError):
-    """Raised if a template tries to do something insecure if the
-    sandbox is enabled.
-    """
-
-
-class FilterArgumentError(TemplateRuntimeError):
-    """This error is raised if a filter was called with inappropriate
-    arguments
-    """
+    """  # noqa: E501
+    pass
