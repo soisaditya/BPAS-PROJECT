@@ -1,61 +1,170 @@
 from __future__ import annotations
 
+import json as _json
 import typing as t
 
-from . import json as json
-from .app import Flask as Flask
-from .blueprints import Blueprint as Blueprint
-from .config import Config as Config
-from .ctx import after_this_request as after_this_request
-from .ctx import copy_current_request_context as copy_current_request_context
-from .ctx import has_app_context as has_app_context
-from .ctx import has_request_context as has_request_context
-from .globals import current_app as current_app
-from .globals import g as g
-from .globals import request as request
-from .globals import session as session
-from .helpers import abort as abort
-from .helpers import flash as flash
-from .helpers import get_flashed_messages as get_flashed_messages
-from .helpers import get_template_attribute as get_template_attribute
-from .helpers import make_response as make_response
-from .helpers import redirect as redirect
-from .helpers import send_file as send_file
-from .helpers import send_from_directory as send_from_directory
-from .helpers import stream_with_context as stream_with_context
-from .helpers import url_for as url_for
-from .json import jsonify as jsonify
-from .signals import appcontext_popped as appcontext_popped
-from .signals import appcontext_pushed as appcontext_pushed
-from .signals import appcontext_tearing_down as appcontext_tearing_down
-from .signals import before_render_template as before_render_template
-from .signals import got_request_exception as got_request_exception
-from .signals import message_flashed as message_flashed
-from .signals import request_finished as request_finished
-from .signals import request_started as request_started
-from .signals import request_tearing_down as request_tearing_down
-from .signals import template_rendered as template_rendered
-from .templating import render_template as render_template
-from .templating import render_template_string as render_template_string
-from .templating import stream_template as stream_template
-from .templating import stream_template_string as stream_template_string
-from .wrappers import Request as Request
-from .wrappers import Response as Response
+from ..globals import current_app
+from .provider import _default
 
-if not t.TYPE_CHECKING:
+if t.TYPE_CHECKING:  # pragma: no cover
+    from ..wrappers import Response
 
-    def __getattr__(name: str) -> t.Any:
-        if name == "__version__":
-            import importlib.metadata
-            import warnings
 
-            warnings.warn(
-                "The '__version__' attribute is deprecated and will be removed in"
-                " Flask 3.2. Use feature detection or"
-                " 'importlib.metadata.version(\"flask\")' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return importlib.metadata.version("flask")
+def dumps(obj: t.Any, **kwargs: t.Any) -> str:
+    """Serialize data as JSON.
 
-        raise AttributeError(name)
+    If :data:`~flask.current_app` is available, it will use its
+    :meth:`app.json.dumps() <flask.json.provider.JSONProvider.dumps>`
+    method, otherwise it will use :func:`json.dumps`.
+
+    :param obj: The data to serialize.
+    :param kwargs: Arguments passed to the ``dumps`` implementation.
+
+    .. versionchanged:: 2.3
+        The ``app`` parameter was removed.
+
+    .. versionchanged:: 2.2
+        Calls ``current_app.json.dumps``, allowing an app to override
+        the behavior.
+
+    .. versionchanged:: 2.0.2
+        :class:`decimal.Decimal` is supported by converting to a string.
+
+    .. versionchanged:: 2.0
+        ``encoding`` will be removed in Flask 2.1.
+
+    .. versionchanged:: 1.0.3
+        ``app`` can be passed directly, rather than requiring an app
+        context for configuration.
+    """
+    if current_app:
+        return current_app.json.dumps(obj, **kwargs)
+
+    kwargs.setdefault("default", _default)
+    return _json.dumps(obj, **kwargs)
+
+
+def dump(obj: t.Any, fp: t.IO[str], **kwargs: t.Any) -> None:
+    """Serialize data as JSON and write to a file.
+
+    If :data:`~flask.current_app` is available, it will use its
+    :meth:`app.json.dump() <flask.json.provider.JSONProvider.dump>`
+    method, otherwise it will use :func:`json.dump`.
+
+    :param obj: The data to serialize.
+    :param fp: A file opened for writing text. Should use the UTF-8
+        encoding to be valid JSON.
+    :param kwargs: Arguments passed to the ``dump`` implementation.
+
+    .. versionchanged:: 2.3
+        The ``app`` parameter was removed.
+
+    .. versionchanged:: 2.2
+        Calls ``current_app.json.dump``, allowing an app to override
+        the behavior.
+
+    .. versionchanged:: 2.0
+        Writing to a binary file, and the ``encoding`` argument, will be
+        removed in Flask 2.1.
+    """
+    if current_app:
+        current_app.json.dump(obj, fp, **kwargs)
+    else:
+        kwargs.setdefault("default", _default)
+        _json.dump(obj, fp, **kwargs)
+
+
+def loads(s: str | bytes, **kwargs: t.Any) -> t.Any:
+    """Deserialize data as JSON.
+
+    If :data:`~flask.current_app` is available, it will use its
+    :meth:`app.json.loads() <flask.json.provider.JSONProvider.loads>`
+    method, otherwise it will use :func:`json.loads`.
+
+    :param s: Text or UTF-8 bytes.
+    :param kwargs: Arguments passed to the ``loads`` implementation.
+
+    .. versionchanged:: 2.3
+        The ``app`` parameter was removed.
+
+    .. versionchanged:: 2.2
+        Calls ``current_app.json.loads``, allowing an app to override
+        the behavior.
+
+    .. versionchanged:: 2.0
+        ``encoding`` will be removed in Flask 2.1. The data must be a
+        string or UTF-8 bytes.
+
+    .. versionchanged:: 1.0.3
+        ``app`` can be passed directly, rather than requiring an app
+        context for configuration.
+    """
+    if current_app:
+        return current_app.json.loads(s, **kwargs)
+
+    return _json.loads(s, **kwargs)
+
+
+def load(fp: t.IO[t.AnyStr], **kwargs: t.Any) -> t.Any:
+    """Deserialize data as JSON read from a file.
+
+    If :data:`~flask.current_app` is available, it will use its
+    :meth:`app.json.load() <flask.json.provider.JSONProvider.load>`
+    method, otherwise it will use :func:`json.load`.
+
+    :param fp: A file opened for reading text or UTF-8 bytes.
+    :param kwargs: Arguments passed to the ``load`` implementation.
+
+    .. versionchanged:: 2.3
+        The ``app`` parameter was removed.
+
+    .. versionchanged:: 2.2
+        Calls ``current_app.json.load``, allowing an app to override
+        the behavior.
+
+    .. versionchanged:: 2.2
+        The ``app`` parameter will be removed in Flask 2.3.
+
+    .. versionchanged:: 2.0
+        ``encoding`` will be removed in Flask 2.1. The file must be text
+        mode, or binary mode with UTF-8 bytes.
+    """
+    if current_app:
+        return current_app.json.load(fp, **kwargs)
+
+    return _json.load(fp, **kwargs)
+
+
+def jsonify(*args: t.Any, **kwargs: t.Any) -> Response:
+    """Serialize the given arguments as JSON, and return a
+    :class:`~flask.Response` object with the ``application/json``
+    mimetype. A dict or list returned from a view will be converted to a
+    JSON response automatically without needing to call this.
+
+    This requires an active request or application context, and calls
+    :meth:`app.json.response() <flask.json.provider.JSONProvider.response>`.
+
+    In debug mode, the output is formatted with indentation to make it
+    easier to read. This may also be controlled by the provider.
+
+    Either positional or keyword arguments can be given, not both.
+    If no arguments are given, ``None`` is serialized.
+
+    :param args: A single value to serialize, or multiple values to
+        treat as a list to serialize.
+    :param kwargs: Treat as a dict to serialize.
+
+    .. versionchanged:: 2.2
+        Calls ``current_app.json.response``, allowing an app to override
+        the behavior.
+
+    .. versionchanged:: 2.0.2
+        :class:`decimal.Decimal` is supported by converting to a string.
+
+    .. versionchanged:: 0.11
+        Added support for serializing top-level arrays. This was a
+        security risk in ancient browsers. See :ref:`security-json`.
+
+    .. versionadded:: 0.2
+    """
+    return current_app.json.response(*args, **kwargs)  # type: ignore[return-value]
