@@ -1,71 +1,31 @@
-from . import _linalg as _linalg, _umath_linalg as _umath_linalg
-from ._linalg import (
-    cholesky,
-    cond,
-    cross,
-    det,
-    diagonal,
-    eig,
-    eigh,
-    eigvals,
-    eigvalsh,
-    inv,
-    lstsq,
-    matmul,
-    matrix_norm,
-    matrix_power,
-    matrix_rank,
-    matrix_transpose,
-    multi_dot,
-    norm,
-    outer,
-    pinv,
-    qr,
-    slogdet,
-    solve,
-    svd,
-    svdvals,
-    tensordot,
-    tensorinv,
-    tensorsolve,
-    trace,
-    vecdot,
-    vector_norm,
-)
+from typing import Final, Literal
+
+from . import chebyshev, hermite, hermite_e, laguerre, legendre, polynomial
+from .chebyshev import Chebyshev
+from .hermite import Hermite
+from .hermite_e import HermiteE
+from .laguerre import Laguerre
+from .legendre import Legendre
+from .polynomial import Polynomial
 
 __all__ = [
-    "LinAlgError",
-    "cholesky",
-    "cond",
-    "cross",
-    "det",
-    "diagonal",
-    "eig",
-    "eigh",
-    "eigvals",
-    "eigvalsh",
-    "inv",
-    "lstsq",
-    "matmul",
-    "matrix_norm",
-    "matrix_power",
-    "matrix_rank",
-    "matrix_transpose",
-    "multi_dot",
-    "norm",
-    "outer",
-    "pinv",
-    "qr",
-    "slogdet",
-    "solve",
-    "svd",
-    "svdvals",
-    "tensordot",
-    "tensorinv",
-    "tensorsolve",
-    "trace",
-    "vecdot",
-    "vector_norm",
+    "set_default_printstyle",
+    "polynomial",
+    "Polynomial",
+    "chebyshev",
+    "Chebyshev",
+    "legendre",
+    "Legendre",
+    "hermite",
+    "Hermite",
+    "hermite_e",
+    "HermiteE",
+    "laguerre",
+    "Laguerre",
 ]
 
-class LinAlgError(ValueError): ...
+def set_default_printstyle(style: Literal["ascii", "unicode"]) -> None: ...
+
+from numpy._pytesttester import PytestTester as _PytestTester
+
+test: Final[_PytestTester]

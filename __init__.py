@@ -1,93 +1,185 @@
 """
-``numpy.linalg``
-================
+A sub-package for efficiently dealing with polynomials.
 
-The NumPy linear algebra functions rely on BLAS and LAPACK to provide efficient
-low level implementations of standard linear algebra algorithms. Those
-libraries may be provided by NumPy itself using C versions of a subset of their
-reference implementations but, when possible, highly optimized libraries that
-take advantage of specialized processor functionality are preferred. Examples
-of such libraries are OpenBLAS, MKL (TM), and ATLAS. Because those libraries
-are multithreaded and processor dependent, environmental variables and external
-packages such as threadpoolctl may be needed to control the number of threads
-or specify the processor architecture.
+Within the documentation for this sub-package, a "finite power series,"
+i.e., a polynomial (also referred to simply as a "series") is represented
+by a 1-D numpy array of the polynomial's coefficients, ordered from lowest
+order term to highest.  For example, array([1,2,3]) represents
+``P_0 + 2*P_1 + 3*P_2``, where P_n is the n-th order basis polynomial
+applicable to the specific module in question, e.g., `polynomial` (which
+"wraps" the "standard" basis) or `chebyshev`.  For optimal performance,
+all operations on polynomials, including evaluation at an argument, are
+implemented as operations on the coefficients.  Additional (module-specific)
+information can be found in the docstring for the module of interest.
 
-- OpenBLAS: https://www.openblas.net/
-- threadpoolctl: https://github.com/joblib/threadpoolctl
+This package provides *convenience classes* for each of six different kinds
+of polynomials:
 
-Please note that the most-used linear algebra functions in NumPy are present in
-the main ``numpy`` namespace rather than in ``numpy.linalg``.  There are:
-``dot``, ``vdot``, ``inner``, ``outer``, ``matmul``, ``tensordot``, ``einsum``,
-``einsum_path`` and ``kron``.
+========================    ================
+**Name**                    **Provides**
+========================    ================
+`~polynomial.Polynomial`    Power series
+`~chebyshev.Chebyshev`      Chebyshev series
+`~legendre.Legendre`        Legendre series
+`~laguerre.Laguerre`        Laguerre series
+`~hermite.Hermite`          Hermite series
+`~hermite_e.HermiteE`       HermiteE series
+========================    ================
 
-Functions present in numpy.linalg are listed below.
+These *convenience classes* provide a consistent interface for creating,
+manipulating, and fitting data with polynomials of different bases.
+The convenience classes are the preferred interface for the `~numpy.polynomial`
+package, and are available from the ``numpy.polynomial`` namespace.
+This eliminates the need to navigate to the corresponding submodules, e.g.
+``np.polynomial.Polynomial`` or ``np.polynomial.Chebyshev`` instead of
+``np.polynomial.polynomial.Polynomial`` or
+``np.polynomial.chebyshev.Chebyshev``, respectively.
+The classes provide a more consistent and concise interface than the
+type-specific functions defined in the submodules for each type of polynomial.
+For example, to fit a Chebyshev polynomial with degree ``1`` to data given
+by arrays ``xdata`` and ``ydata``, the
+`~chebyshev.Chebyshev.fit` class method::
 
+    >>> from numpy.polynomial import Chebyshev
+    >>> xdata = [1, 2, 3, 4]
+    >>> ydata = [1, 4, 9, 16]
+    >>> c = Chebyshev.fit(xdata, ydata, deg=1)
 
-Matrix and vector products
---------------------------
+is preferred over the `chebyshev.chebfit` function from the
+``np.polynomial.chebyshev`` module::
 
-   cross
-   multi_dot
-   matrix_power
-   tensordot
-   matmul
+    >>> from numpy.polynomial.chebyshev import chebfit
+    >>> c = chebfit(xdata, ydata, deg=1)
 
-Decompositions
---------------
+See :doc:`routines.polynomials.classes` for more details.
 
-   cholesky
-   outer
-   qr
-   svd
-   svdvals
+Convenience Classes
+===================
 
-Matrix eigenvalues
-------------------
+The following lists the various constants and methods common to all of
+the classes representing the various kinds of polynomials. In the following,
+the term ``Poly`` represents any one of the convenience classes (e.g.
+`~polynomial.Polynomial`, `~chebyshev.Chebyshev`, `~hermite.Hermite`, etc.)
+while the lowercase ``p`` represents an **instance** of a polynomial class.
 
-   eig
-   eigh
-   eigvals
-   eigvalsh
+Constants
+---------
 
-Norms and other numbers
------------------------
+- ``Poly.domain``     -- Default domain
+- ``Poly.window``     -- Default window
+- ``Poly.basis_name`` -- String used to represent the basis
+- ``Poly.maxpower``   -- Maximum value ``n`` such that ``p**n`` is allowed
 
-   norm
-   matrix_norm
-   vector_norm
-   cond
-   det
-   matrix_rank
-   slogdet
-   trace (Array API compatible)
+Creation
+--------
 
-Solving equations and inverting matrices
-----------------------------------------
+Methods for creating polynomial instances.
 
-   solve
-   tensorsolve
-   lstsq
-   inv
-   pinv
-   tensorinv
+- ``Poly.basis(degree)``    -- Basis polynomial of given degree
+- ``Poly.identity()``       -- ``p`` where ``p(x) = x`` for all ``x``
+- ``Poly.fit(x, y, deg)``   -- ``p`` of degree ``deg`` with coefficients
+  determined by the least-squares fit to the data ``x``, ``y``
+- ``Poly.fromroots(roots)`` -- ``p`` with specified roots
+- ``p.copy()``              -- Create a copy of ``p``
 
-Other matrix operations
------------------------
-
-   diagonal (Array API compatible)
-   matrix_transpose (Array API compatible)
-
-Exceptions
+Conversion
 ----------
 
-   LinAlgError
+Methods for converting a polynomial instance of one kind to another.
+
+- ``p.cast(Poly)``    -- Convert ``p`` to instance of kind ``Poly``
+- ``p.convert(Poly)`` -- Convert ``p`` to instance of kind ``Poly`` or map
+  between ``domain`` and ``window``
+
+Calculus
+--------
+- ``p.deriv()`` -- Take the derivative of ``p``
+- ``p.integ()`` -- Integrate ``p``
+
+Validation
+----------
+- ``Poly.has_samecoef(p1, p2)``   -- Check if coefficients match
+- ``Poly.has_samedomain(p1, p2)`` -- Check if domains match
+- ``Poly.has_sametype(p1, p2)``   -- Check if types match
+- ``Poly.has_samewindow(p1, p2)`` -- Check if windows match
+
+Misc
+----
+- ``p.linspace()`` -- Return ``x, p(x)`` at equally-spaced points in ``domain``
+- ``p.mapparms()`` -- Return the parameters for the linear mapping between
+  ``domain`` and ``window``.
+- ``p.roots()``    -- Return the roots of ``p``.
+- ``p.trim()``     -- Remove trailing coefficients.
+- ``p.cutdeg(degree)`` -- Truncate ``p`` to given degree
+- ``p.truncate(size)`` -- Truncate ``p`` to given size
 
 """
-# To get sub-modules
-from . import _linalg
-from ._linalg import *
+from .chebyshev import Chebyshev
+from .hermite import Hermite
+from .hermite_e import HermiteE
+from .laguerre import Laguerre
+from .legendre import Legendre
+from .polynomial import Polynomial
 
-__all__ = _linalg.__all__.copy()  # noqa: PLE0605
+__all__ = [  # noqa: F822
+    "set_default_printstyle",
+    "polynomial", "Polynomial",
+    "chebyshev", "Chebyshev",
+    "legendre", "Legendre",
+    "hermite", "Hermite",
+    "hermite_e", "HermiteE",
+    "laguerre", "Laguerre",
+]
+
+
+def set_default_printstyle(style):
+    """
+    Set the default format for the string representation of polynomials.
+
+    Values for ``style`` must be valid inputs to ``__format__``, i.e. 'ascii'
+    or 'unicode'.
+
+    Parameters
+    ----------
+    style : str
+        Format string for default printing style. Must be either 'ascii' or
+        'unicode'.
+
+    Notes
+    -----
+    The default format depends on the platform: 'unicode' is used on
+    Unix-based systems and 'ascii' on Windows. This determination is based on
+    default font support for the unicode superscript and subscript ranges.
+
+    Examples
+    --------
+    >>> p = np.polynomial.Polynomial([1, 2, 3])
+    >>> c = np.polynomial.Chebyshev([1, 2, 3])
+    >>> np.polynomial.set_default_printstyle('unicode')
+    >>> print(p)
+    1.0 + 2.0·x + 3.0·x²
+    >>> print(c)
+    1.0 + 2.0·T₁(x) + 3.0·T₂(x)
+    >>> np.polynomial.set_default_printstyle('ascii')
+    >>> print(p)
+    1.0 + 2.0 x + 3.0 x**2
+    >>> print(c)
+    1.0 + 2.0 T_1(x) + 3.0 T_2(x)
+    >>> # Formatting supersedes all class/package-level defaults
+    >>> print(f"{p:unicode}")
+    1.0 + 2.0·x + 3.0·x²
+    """
+    if style not in ('unicode', 'ascii'):
+        raise ValueError(
+            f"Unsupported format string '{style}'. Valid options are 'ascii' "
+            f"and 'unicode'"
+        )
+    _use_unicode = True
+    if style == 'ascii':
+        _use_unicode = False
+    from ._polybase import ABCPolyBase
+    ABCPolyBase._use_unicode = _use_unicode
+
 
 from numpy._pytesttester import PytestTester
 
