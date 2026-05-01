@@ -1,347 +1,148 @@
-"""Tests for :mod:`_core.fromnumeric`."""
-
-from typing import Any, assert_type
+"""Tests for :mod:`numpy._core.fromnumeric`."""
 
 import numpy as np
 import numpy.typing as npt
 
-class NDArraySubclass(npt.NDArray[np.complex128]): ...
-
-AR_b: npt.NDArray[np.bool]
+A = np.array(True, ndmin=2, dtype=bool)
+A.setflags(write=False)
+AR_U: npt.NDArray[np.str_]
+AR_M: npt.NDArray[np.datetime64]
 AR_f4: npt.NDArray[np.float32]
-AR_c16: npt.NDArray[np.complex128]
-AR_u8: npt.NDArray[np.uint64]
-AR_i8: npt.NDArray[np.int64]
-AR_O: npt.NDArray[np.object_]
-AR_subclass: NDArraySubclass
-AR_m: npt.NDArray[np.timedelta64]
-AR_0d: np.ndarray[tuple[()]]
-AR_1d: np.ndarray[tuple[int]]
-AR_nd: np.ndarray
 
-b: np.bool
-f4: np.float32
-i8: np.int64
-f: float
+a = np.bool(True)
 
-# integer‑dtype subclass for argmin/argmax
-class NDArrayIntSubclass(npt.NDArray[np.intp]): ...
-AR_sub_i: NDArrayIntSubclass
+np.take(a, None)  # type: ignore[call-overload]
+np.take(a, axis=1.0)  # type: ignore[call-overload]
+np.take(A, out=1)  # type: ignore[call-overload]
+np.take(A, mode="bob")  # type: ignore[call-overload]
 
-assert_type(np.take(b, 0), np.bool)
-assert_type(np.take(f4, 0), np.float32)
-assert_type(np.take(f, 0), Any)
-assert_type(np.take(AR_b, 0), np.bool)
-assert_type(np.take(AR_f4, 0), np.float32)
-assert_type(np.take(AR_b, [0]), npt.NDArray[np.bool])
-assert_type(np.take(AR_f4, [0]), npt.NDArray[np.float32])
-assert_type(np.take([1], [0]), npt.NDArray[Any])
-assert_type(np.take(AR_f4, [0], out=AR_subclass), NDArraySubclass)
+np.reshape(a, None)  # type: ignore[call-overload]
+np.reshape(A, 1, order="bob")  # type: ignore[call-overload]
 
-assert_type(np.reshape(b, 1), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.reshape(f4, 1), np.ndarray[tuple[int], np.dtype[np.float32]])
-assert_type(np.reshape(f, 1), np.ndarray[tuple[int], np.dtype])
-assert_type(np.reshape(AR_b, 1), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.reshape(AR_f4, 1), np.ndarray[tuple[int], np.dtype[np.float32]])
+np.choose(a, None)  # type: ignore[call-overload]
+np.choose(a, out=1.0)  # type: ignore[call-overload]
+np.choose(A, mode="bob")  # type: ignore[call-overload]
 
-assert_type(np.choose(1, [True, True]), Any)
-assert_type(np.choose([1], [True, True]), npt.NDArray[Any])
-assert_type(np.choose([1], AR_b), npt.NDArray[np.bool])
-assert_type(np.choose([1], AR_b, out=AR_f4), npt.NDArray[np.float32])
+np.repeat(a, None)  # type: ignore[call-overload]
+np.repeat(A, 1, axis=1.0)  # type: ignore[call-overload]
 
-assert_type(np.repeat(b, 1), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.repeat(b, 1, axis=0), npt.NDArray[np.bool])
-assert_type(np.repeat(f4, 1), np.ndarray[tuple[int], np.dtype[np.float32]])
-assert_type(np.repeat(f, 1), np.ndarray[tuple[int], np.dtype[Any]])
-assert_type(np.repeat(AR_b, 1), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.repeat(AR_f4, 1), np.ndarray[tuple[int], np.dtype[np.float32]])
-assert_type(np.repeat(AR_f4, 1, axis=0), npt.NDArray[np.float32])
+np.swapaxes(A, None, 1)  # type: ignore[call-overload]
+np.swapaxes(A, 1, [0])  # type: ignore[call-overload]
 
-# TODO: array_bdd tests for np.put()
+np.transpose(A, axes=1.0)  # type: ignore[call-overload]
 
-assert_type(np.swapaxes([[0, 1]], 0, 0), npt.NDArray[Any])
-assert_type(np.swapaxes(AR_b, 0, 0), npt.NDArray[np.bool])
-assert_type(np.swapaxes(AR_f4, 0, 0), npt.NDArray[np.float32])
+np.partition(a, None)  # type: ignore[call-overload]
+np.partition(a, 0, axis="bob")  # type: ignore[call-overload]
+np.partition(A, 0, kind="bob")  # type: ignore[call-overload]
+np.partition(A, 0, order=range(5))  # type: ignore[arg-type]
 
-assert_type(np.transpose(b), npt.NDArray[np.bool])
-assert_type(np.transpose(f4), npt.NDArray[np.float32])
-assert_type(np.transpose(f), npt.NDArray[Any])
-assert_type(np.transpose(AR_b), npt.NDArray[np.bool])
-assert_type(np.transpose(AR_f4), npt.NDArray[np.float32])
+np.argpartition(a, None)  # type: ignore[arg-type]
+np.argpartition(a, 0, axis="bob")  # type: ignore[arg-type]
+np.argpartition(A, 0, kind="bob")  # type: ignore[arg-type]
+np.argpartition(A, 0, order=range(5))  # type: ignore[arg-type]
 
-assert_type(np.partition(b, 0, axis=None), npt.NDArray[np.bool])
-assert_type(np.partition(f4, 0, axis=None), npt.NDArray[np.float32])
-assert_type(np.partition(f, 0, axis=None), npt.NDArray[Any])
-assert_type(np.partition(AR_b, 0), npt.NDArray[np.bool])
-assert_type(np.partition(AR_f4, 0), npt.NDArray[np.float32])
+np.sort(A, axis="bob")  # type: ignore[call-overload]
+np.sort(A, kind="bob")  # type: ignore[call-overload]
+np.sort(A, order=range(5))  # type: ignore[arg-type]
 
-assert_type(np.argpartition(b, 0), npt.NDArray[np.intp])
-assert_type(np.argpartition(f4, 0), npt.NDArray[np.intp])
-assert_type(np.argpartition(f, 0), npt.NDArray[np.intp])
-assert_type(np.argpartition(AR_b, 0), npt.NDArray[np.intp])
-assert_type(np.argpartition(AR_f4, 0), npt.NDArray[np.intp])
+np.argsort(A, axis="bob")  # type: ignore[arg-type]
+np.argsort(A, kind="bob")  # type: ignore[arg-type]
+np.argsort(A, order=range(5))  # type: ignore[arg-type]
 
-assert_type(np.sort([2, 1], 0), npt.NDArray[Any])
-assert_type(np.sort(AR_b, 0), npt.NDArray[np.bool])
-assert_type(np.sort(AR_f4, 0), npt.NDArray[np.float32])
+np.argmax(A, axis="bob")  # type: ignore[call-overload]
+np.argmax(A, kind="bob")  # type: ignore[call-overload]
+np.argmax(A, out=AR_f4)  # type: ignore[type-var]
 
-assert_type(np.argsort(AR_b, 0), npt.NDArray[np.intp])
-assert_type(np.argsort(AR_f4, 0), npt.NDArray[np.intp])
+np.argmin(A, axis="bob")  # type: ignore[call-overload]
+np.argmin(A, kind="bob")  # type: ignore[call-overload]
+np.argmin(A, out=AR_f4)  # type: ignore[type-var]
 
-assert_type(np.argmax(AR_b), np.intp)
-assert_type(np.argmax(AR_f4), np.intp)
-assert_type(np.argmax(AR_b, axis=0), Any)
-assert_type(np.argmax(AR_f4, axis=0), Any)
-assert_type(np.argmax(AR_f4, out=AR_sub_i), NDArrayIntSubclass)
+np.searchsorted(A[0], 0, side="bob")  # type: ignore[call-overload]
+np.searchsorted(A[0], 0, sorter=1.0)  # type: ignore[call-overload]
 
-assert_type(np.argmin(AR_b), np.intp)
-assert_type(np.argmin(AR_f4), np.intp)
-assert_type(np.argmin(AR_b, axis=0), Any)
-assert_type(np.argmin(AR_f4, axis=0), Any)
-assert_type(np.argmin(AR_f4, out=AR_sub_i), NDArrayIntSubclass)
+np.resize(A, 1.0)  # type: ignore[call-overload]
 
-assert_type(np.searchsorted(AR_b[0], 0), np.intp)
-assert_type(np.searchsorted(AR_f4[0], 0), np.intp)
-assert_type(np.searchsorted(AR_b[0], [0]), npt.NDArray[np.intp])
-assert_type(np.searchsorted(AR_f4[0], [0]), npt.NDArray[np.intp])
+np.squeeze(A, 1.0)  # type: ignore[call-overload]
 
-assert_type(np.resize(b, (5, 5)), np.ndarray[tuple[int, int], np.dtype[np.bool]])
-assert_type(np.resize(f4, (5, 5)), np.ndarray[tuple[int, int], np.dtype[np.float32]])
-assert_type(np.resize(f, (5, 5)), np.ndarray[tuple[int, int], np.dtype])
-assert_type(np.resize(AR_b, (5, 5)), np.ndarray[tuple[int, int], np.dtype[np.bool]])
-assert_type(np.resize(AR_f4, (5, 5)), np.ndarray[tuple[int, int], np.dtype[np.float32]])
+np.diagonal(A, offset=None)  # type: ignore[call-overload]
+np.diagonal(A, axis1="bob")  # type: ignore[call-overload]
+np.diagonal(A, axis2=[])  # type: ignore[call-overload]
 
-assert_type(np.squeeze(b), np.bool)
-assert_type(np.squeeze(f4), np.float32)
-assert_type(np.squeeze(f), npt.NDArray[Any])
-assert_type(np.squeeze(AR_b), npt.NDArray[np.bool])
-assert_type(np.squeeze(AR_f4), npt.NDArray[np.float32])
+np.trace(A, offset=None)  # type: ignore[call-overload]
+np.trace(A, axis1="bob")  # type: ignore[call-overload]
+np.trace(A, axis2=[])  # type: ignore[call-overload]
 
-assert_type(np.diagonal(AR_b), npt.NDArray[np.bool])
-assert_type(np.diagonal(AR_f4), npt.NDArray[np.float32])
+np.ravel(a, order="bob")  # type: ignore[call-overload]
 
-assert_type(np.trace(AR_b), Any)
-assert_type(np.trace(AR_f4), Any)
-assert_type(np.trace(AR_f4, out=AR_subclass), NDArraySubclass)
-assert_type(np.trace(AR_f4, out=AR_subclass, dtype=None), NDArraySubclass)
+np.nonzero(0)  # type: ignore[arg-type]
 
-assert_type(np.ravel(b), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.ravel(f4), np.ndarray[tuple[int], np.dtype[np.float32]])
-assert_type(np.ravel(f), np.ndarray[tuple[int], np.dtype[np.float64 | Any]])
-assert_type(np.ravel(AR_b), np.ndarray[tuple[int], np.dtype[np.bool]])
-assert_type(np.ravel(AR_f4), np.ndarray[tuple[int], np.dtype[np.float32]])
+np.compress([True], A, axis=1.0)  # type: ignore[call-overload]
 
-assert_type(np.nonzero(AR_b), tuple[np.ndarray[tuple[int], np.dtype[np.intp]], ...])
-assert_type(np.nonzero(AR_f4), tuple[np.ndarray[tuple[int], np.dtype[np.intp]], ...])
-assert_type(np.nonzero(AR_1d), tuple[np.ndarray[tuple[int], np.dtype[np.intp]], ...])
-assert_type(np.nonzero(AR_nd), tuple[np.ndarray[tuple[int], np.dtype[np.intp]], ...])
+np.clip(a, 1, 2, out=1)  # type: ignore[call-overload]
 
-assert_type(np.shape(b), tuple[()])
-assert_type(np.shape(f), tuple[()])
-assert_type(np.shape([1]), tuple[int])
-assert_type(np.shape([[2]]), tuple[int, int])
-assert_type(np.shape([[[3]]]), tuple[Any, ...])
-assert_type(np.shape(AR_b), tuple[Any, ...])
-assert_type(np.shape(AR_nd), tuple[Any, ...])
-# these fail on mypy, but it works as expected with pyright/pylance
-# assert_type(np.shape(AR_0d), tuple[()])
-# assert_type(np.shape(AR_1d), tuple[int])
-# assert_type(np.shape(AR_2d), tuple[int, int])
+np.sum(a, axis=1.0)  # type: ignore[call-overload]
+np.sum(a, keepdims=1.0)  # type: ignore[call-overload]
+np.sum(a, initial=[1])  # type: ignore[call-overload]
 
-assert_type(np.compress([True], b), npt.NDArray[np.bool])
-assert_type(np.compress([True], f4), npt.NDArray[np.float32])
-assert_type(np.compress([True], f), npt.NDArray[Any])
-assert_type(np.compress([True], AR_b), npt.NDArray[np.bool])
-assert_type(np.compress([True], AR_f4), npt.NDArray[np.float32])
+np.all(a, axis=1.0)  # type: ignore[call-overload]
+np.all(a, keepdims=1.0)  # type: ignore[call-overload]
+np.all(a, out=1.0)  # type: ignore[call-overload]
 
-assert_type(np.clip(b, 0, 1.0), np.bool)
-assert_type(np.clip(f4, -1, 1), np.float32)
-assert_type(np.clip(f, 0, 1), Any)
-assert_type(np.clip(AR_b, 0, 1), npt.NDArray[np.bool])
-assert_type(np.clip(AR_f4, 0, 1), npt.NDArray[np.float32])
-assert_type(np.clip([0], 0, 1), npt.NDArray[Any])
-assert_type(np.clip(AR_b, 0, 1, out=AR_subclass), NDArraySubclass)
+np.any(a, axis=1.0)  # type: ignore[call-overload]
+np.any(a, keepdims=1.0)  # type: ignore[call-overload]
+np.any(a, out=1.0)  # type: ignore[call-overload]
 
-assert_type(np.sum(b), np.bool)
-assert_type(np.sum(f4), np.float32)
-assert_type(np.sum(f), Any)
-assert_type(np.sum(AR_b), np.bool)
-assert_type(np.sum(AR_f4), np.float32)
-assert_type(np.sum(AR_b, axis=0), Any)
-assert_type(np.sum(AR_f4, axis=0), Any)
-assert_type(np.sum(AR_f4, out=AR_subclass), NDArraySubclass)
-assert_type(np.sum(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.sum(AR_f4, None, np.float64), np.float64)
-assert_type(np.sum(AR_f4, dtype=np.float64, keepdims=False), np.float64)
-assert_type(np.sum(AR_f4, None, np.float64, keepdims=False), np.float64)
-assert_type(np.sum(AR_f4, dtype=np.float64, keepdims=True), np.float64 | npt.NDArray[np.float64])
-assert_type(np.sum(AR_f4, None, np.float64, keepdims=True), np.float64 | npt.NDArray[np.float64])
+np.cumsum(a, axis=1.0)  # type: ignore[call-overload]
+np.cumsum(a, dtype=1.0)  # type: ignore[call-overload]
+np.cumsum(a, out=1.0)  # type: ignore[call-overload]
 
-assert_type(np.all(b), np.bool)
-assert_type(np.all(f4), np.bool)
-assert_type(np.all(f), np.bool)
-assert_type(np.all(AR_b), np.bool)
-assert_type(np.all(AR_f4), np.bool)
-assert_type(np.all(AR_b, axis=0), Any)
-assert_type(np.all(AR_f4, axis=0), Any)
-assert_type(np.all(AR_b, keepdims=True), Any)
-assert_type(np.all(AR_f4, keepdims=True), Any)
-assert_type(np.all(AR_f4, out=AR_subclass), NDArraySubclass)
+np.ptp(a, axis=1.0)  # type: ignore[call-overload]
+np.ptp(a, keepdims=1.0)  # type: ignore[call-overload]
+np.ptp(a, out=1.0)  # type: ignore[call-overload]
 
-assert_type(np.any(b), np.bool)
-assert_type(np.any(f4), np.bool)
-assert_type(np.any(f), np.bool)
-assert_type(np.any(AR_b), np.bool)
-assert_type(np.any(AR_f4), np.bool)
-assert_type(np.any(AR_b, axis=0), Any)
-assert_type(np.any(AR_f4, axis=0), Any)
-assert_type(np.any(AR_b, keepdims=True), Any)
-assert_type(np.any(AR_f4, keepdims=True), Any)
-assert_type(np.any(AR_f4, out=AR_subclass), NDArraySubclass)
+np.amax(a, axis=1.0)  # type: ignore[call-overload]
+np.amax(a, keepdims=1.0)  # type: ignore[call-overload]
+np.amax(a, out=1.0)  # type: ignore[call-overload]
+np.amax(a, initial=[1.0])  # type: ignore[call-overload]
+np.amax(a, where=[1.0])  # type: ignore[arg-type]
 
-assert_type(np.cumsum(b), npt.NDArray[np.bool])
-assert_type(np.cumsum(f4), npt.NDArray[np.float32])
-assert_type(np.cumsum(f), npt.NDArray[Any])
-assert_type(np.cumsum(AR_b), npt.NDArray[np.bool])
-assert_type(np.cumsum(AR_f4), npt.NDArray[np.float32])
-assert_type(np.cumsum(f, dtype=float), npt.NDArray[Any])
-assert_type(np.cumsum(f, dtype=np.float64), npt.NDArray[np.float64])
-assert_type(np.cumsum(AR_f4, out=AR_subclass), NDArraySubclass)
+np.amin(a, axis=1.0)  # type: ignore[call-overload]
+np.amin(a, keepdims=1.0)  # type: ignore[call-overload]
+np.amin(a, out=1.0)  # type: ignore[call-overload]
+np.amin(a, initial=[1.0])  # type: ignore[call-overload]
+np.amin(a, where=[1.0])  # type: ignore[arg-type]
 
-assert_type(np.cumulative_sum(b), npt.NDArray[np.bool])
-assert_type(np.cumulative_sum(f4), npt.NDArray[np.float32])
-assert_type(np.cumulative_sum(f), npt.NDArray[Any])
-assert_type(np.cumulative_sum(AR_b), npt.NDArray[np.bool])
-assert_type(np.cumulative_sum(AR_f4), npt.NDArray[np.float32])
-assert_type(np.cumulative_sum(f, dtype=float), npt.NDArray[Any])
-assert_type(np.cumulative_sum(f, dtype=np.float64), npt.NDArray[np.float64])
-assert_type(np.cumulative_sum(AR_f4, out=AR_subclass), NDArraySubclass)
+np.prod(a, axis=1.0)  # type: ignore[call-overload]
+np.prod(a, out=False)  # type: ignore[call-overload]
+np.prod(a, keepdims=1.0)  # type: ignore[call-overload]
+np.prod(a, initial=int)  # type: ignore[call-overload]
+np.prod(a, where=1.0)  # type: ignore[call-overload]
+np.prod(AR_U)  # type: ignore[arg-type]
 
-assert_type(np.ptp(b), np.bool)
-assert_type(np.ptp(f4), np.float32)
-assert_type(np.ptp(f), Any)
-assert_type(np.ptp(AR_b), np.bool)
-assert_type(np.ptp(AR_f4), np.float32)
-assert_type(np.ptp(AR_b, axis=0), Any)
-assert_type(np.ptp(AR_f4, axis=0), Any)
-assert_type(np.ptp(AR_b, keepdims=True), Any)
-assert_type(np.ptp(AR_f4, keepdims=True), Any)
-assert_type(np.ptp(AR_f4, out=AR_subclass), NDArraySubclass)
+np.cumprod(a, axis=1.0)  # type: ignore[call-overload]
+np.cumprod(a, out=False)  # type: ignore[call-overload]
+np.cumprod(AR_U)  # type: ignore[arg-type]
 
-assert_type(np.amax(b), np.bool)
-assert_type(np.amax(f4), np.float32)
-assert_type(np.amax(f), Any)
-assert_type(np.amax(AR_b), np.bool)
-assert_type(np.amax(AR_f4), np.float32)
-assert_type(np.amax(AR_b, axis=0), Any)
-assert_type(np.amax(AR_f4, axis=0), Any)
-assert_type(np.amax(AR_b, keepdims=True), Any)
-assert_type(np.amax(AR_f4, keepdims=True), Any)
-assert_type(np.amax(AR_f4, out=AR_subclass), NDArraySubclass)
+np.size(a, axis=1.0)  # type: ignore[arg-type]
 
-assert_type(np.amin(b), np.bool)
-assert_type(np.amin(f4), np.float32)
-assert_type(np.amin(f), Any)
-assert_type(np.amin(AR_b), np.bool)
-assert_type(np.amin(AR_f4), np.float32)
-assert_type(np.amin(AR_b, axis=0), Any)
-assert_type(np.amin(AR_f4, axis=0), Any)
-assert_type(np.amin(AR_b, keepdims=True), Any)
-assert_type(np.amin(AR_f4, keepdims=True), Any)
-assert_type(np.amin(AR_f4, out=AR_subclass), NDArraySubclass)
+np.around(a, decimals=1.0)  # type: ignore[call-overload]
+np.around(a, out=type)  # type: ignore[call-overload]
+np.around(AR_U)  # type: ignore[arg-type]
 
-assert_type(np.prod(AR_b), np.int_)
-assert_type(np.prod(AR_u8), np.uint64)
-assert_type(np.prod(AR_i8), np.int64)
-assert_type(np.prod(AR_f4), np.floating)
-assert_type(np.prod(AR_c16), np.complexfloating)
-assert_type(np.prod(AR_O), Any)
-assert_type(np.prod(AR_f4, axis=0), Any)
-assert_type(np.prod(AR_f4, keepdims=True), Any)
-assert_type(np.prod(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.prod(AR_f4, dtype=float), Any)
-assert_type(np.prod(AR_f4, out=AR_subclass), NDArraySubclass)
+np.mean(a, axis=1.0)  # type: ignore[call-overload]
+np.mean(a, out=False)  # type: ignore[call-overload]
+np.mean(a, keepdims=1.0)  # type: ignore[call-overload]
+np.mean(AR_U)  # type: ignore[arg-type]
+np.mean(AR_M)  # type: ignore[arg-type]
 
-assert_type(np.cumprod(AR_b), npt.NDArray[np.int_])
-assert_type(np.cumprod(AR_u8), npt.NDArray[np.uint64])
-assert_type(np.cumprod(AR_i8), npt.NDArray[np.int64])
-assert_type(np.cumprod(AR_f4), npt.NDArray[np.floating])
-assert_type(np.cumprod(AR_c16), npt.NDArray[np.complexfloating])
-assert_type(np.cumprod(AR_O), npt.NDArray[np.object_])
-assert_type(np.cumprod(AR_f4, axis=0), npt.NDArray[np.floating])
-assert_type(np.cumprod(AR_f4, dtype=np.float64), npt.NDArray[np.float64])
-assert_type(np.cumprod(AR_f4, dtype=float), npt.NDArray[Any])
-assert_type(np.cumprod(AR_f4, out=AR_subclass), NDArraySubclass)
+np.std(a, axis=1.0)  # type: ignore[call-overload]
+np.std(a, out=False)  # type: ignore[call-overload]
+np.std(a, ddof="test")  # type: ignore[call-overload]
+np.std(a, keepdims=1.0)  # type: ignore[call-overload]
+np.std(AR_U)  # type: ignore[arg-type]
 
-assert_type(np.cumulative_prod(AR_b), npt.NDArray[np.int_])
-assert_type(np.cumulative_prod(AR_u8), npt.NDArray[np.uint64])
-assert_type(np.cumulative_prod(AR_i8), npt.NDArray[np.int64])
-assert_type(np.cumulative_prod(AR_f4), npt.NDArray[np.floating])
-assert_type(np.cumulative_prod(AR_c16), npt.NDArray[np.complexfloating])
-assert_type(np.cumulative_prod(AR_O), npt.NDArray[np.object_])
-assert_type(np.cumulative_prod(AR_f4, axis=0), npt.NDArray[np.floating])
-assert_type(np.cumulative_prod(AR_f4, dtype=np.float64), npt.NDArray[np.float64])
-assert_type(np.cumulative_prod(AR_f4, dtype=float), npt.NDArray[Any])
-assert_type(np.cumulative_prod(AR_f4, out=AR_subclass), NDArraySubclass)
-
-assert_type(np.ndim(b), int)
-assert_type(np.ndim(f4), int)
-assert_type(np.ndim(f), int)
-assert_type(np.ndim(AR_b), int)
-assert_type(np.ndim(AR_f4), int)
-
-assert_type(np.size(b), int)
-assert_type(np.size(f4), int)
-assert_type(np.size(f), int)
-assert_type(np.size(AR_b), int)
-assert_type(np.size(AR_f4), int)
-
-assert_type(np.around(b), np.float16)
-assert_type(np.around(f), Any)
-assert_type(np.around(i8), np.int64)
-assert_type(np.around(f4), np.float32)
-assert_type(np.around(AR_b), npt.NDArray[np.float16])
-assert_type(np.around(AR_i8), npt.NDArray[np.int64])
-assert_type(np.around(AR_f4), npt.NDArray[np.float32])
-assert_type(np.around([1.5]), npt.NDArray[Any])
-assert_type(np.around(AR_f4, out=AR_subclass), NDArraySubclass)
-
-assert_type(np.mean(AR_b), np.floating)
-assert_type(np.mean(AR_i8), np.floating)
-assert_type(np.mean(AR_f4), np.floating)
-assert_type(np.mean(AR_m), np.timedelta64)
-assert_type(np.mean(AR_c16), np.complexfloating)
-assert_type(np.mean(AR_O), Any)
-assert_type(np.mean(AR_f4, axis=0), Any)
-assert_type(np.mean(AR_f4, keepdims=True), Any)
-assert_type(np.mean(AR_f4, dtype=float), Any)
-assert_type(np.mean(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.mean(AR_f4, out=AR_subclass), NDArraySubclass)
-assert_type(np.mean(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.mean(AR_f4, None, np.float64), np.float64)
-assert_type(np.mean(AR_f4, dtype=np.float64, keepdims=False), np.float64)
-assert_type(np.mean(AR_f4, None, np.float64, keepdims=False), np.float64)
-assert_type(np.mean(AR_f4, dtype=np.float64, keepdims=True), np.float64 | npt.NDArray[np.float64])
-assert_type(np.mean(AR_f4, None, np.float64, keepdims=True), np.float64 | npt.NDArray[np.float64])
-
-assert_type(np.std(AR_b), np.floating)
-assert_type(np.std(AR_i8), np.floating)
-assert_type(np.std(AR_f4), np.floating)
-assert_type(np.std(AR_c16), np.floating)
-assert_type(np.std(AR_O), Any)
-assert_type(np.std(AR_f4, axis=0), Any)
-assert_type(np.std(AR_f4, keepdims=True), Any)
-assert_type(np.std(AR_f4, dtype=float), Any)
-assert_type(np.std(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.std(AR_f4, out=AR_subclass), NDArraySubclass)
-
-assert_type(np.var(AR_b), np.floating)
-assert_type(np.var(AR_i8), np.floating)
-assert_type(np.var(AR_f4), np.floating)
-assert_type(np.var(AR_c16), np.floating)
-assert_type(np.var(AR_O), Any)
-assert_type(np.var(AR_f4, axis=0), Any)
-assert_type(np.var(AR_f4, keepdims=True), Any)
-assert_type(np.var(AR_f4, dtype=float), Any)
-assert_type(np.var(AR_f4, dtype=np.float64), np.float64)
-assert_type(np.var(AR_f4, out=AR_subclass), NDArraySubclass)
+np.var(a, axis=1.0)  # type: ignore[call-overload]
+np.var(a, out=False)  # type: ignore[call-overload]
+np.var(a, ddof="test")  # type: ignore[call-overload]
+np.var(a, keepdims=1.0)  # type: ignore[call-overload]
+np.var(AR_U)  # type: ignore[arg-type]

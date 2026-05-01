@@ -1,86 +1,38 @@
-from typing import Any, TypeAlias, assert_type
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
-_ArrayND: TypeAlias = np.ndarray[tuple[Any, ...], np.dtypes.StrDType]
-_Array1D: TypeAlias = np.ndarray[tuple[int], np.dtypes.BytesDType]
-_Array2D: TypeAlias = np.ndarray[tuple[int, int], np.dtypes.Int8DType]
+class _Index:
+    def __index__(self) -> int: ...
 
-_a_nd: np.flatiter[_ArrayND]
-_a_1d: np.flatiter[_Array1D]
-_a_2d: np.flatiter[_Array2D]
+class _MyArray:
+    def __array__(self) -> np.ndarray[tuple[int], np.dtypes.Float64DType]: ...
+
+_index: _Index
+_my_array: _MyArray
+_something: Any
+_dtype: np.dtype[np.int8]
+
+_a_nd: np.flatiter[npt.NDArray[np.float64]]
 
 ###
 
-# .base
-assert_type(_a_nd.base, _ArrayND)
-assert_type(_a_1d.base, _Array1D)
-assert_type(_a_2d.base, _Array2D)
+_a_nd.base = _something  # type: ignore[misc]
+_a_nd.coords = _something  # type: ignore[misc]
+_a_nd.index = _something  # type: ignore[misc]
 
-# .coords
-assert_type(_a_nd.coords, tuple[Any, ...])
-assert_type(_a_1d.coords, tuple[int])
-assert_type(_a_2d.coords, tuple[int, int])
+_a_nd.copy("C")  # type: ignore[call-arg]
+_a_nd.copy(order="C")  # type: ignore[call-arg]
 
-# .index
-assert_type(_a_nd.index, int)
-assert_type(_a_1d.index, int)
-assert_type(_a_2d.index, int)
+# NOTE: Contrary to `ndarray.__getitem__` its counterpart in `flatiter`
+# does not accept objects with the `__array__` or `__index__` protocols;
+# boolean indexing is just plain broken (gh-17175)
+_a_nd[np.True_]  # type: ignore[call-overload]
+_a_nd[_index]  # type: ignore[call-overload]
+_a_nd[_my_array]  # type: ignore[call-overload]
 
-# .__len__()
-assert_type(len(_a_nd), int)
-assert_type(len(_a_1d), int)
-assert_type(len(_a_2d), int)
-
-# .__iter__()
-assert_type(iter(_a_nd), np.flatiter[_ArrayND])
-assert_type(iter(_a_1d), np.flatiter[_Array1D])
-assert_type(iter(_a_2d), np.flatiter[_Array2D])
-
-# .__next__()
-assert_type(next(_a_nd), np.str_)
-assert_type(next(_a_1d), np.bytes_)
-assert_type(next(_a_2d), np.int8)
-
-# .__getitem__(())
-assert_type(_a_nd[()], _ArrayND)
-assert_type(_a_1d[()], _Array1D)
-assert_type(_a_2d[()], _Array2D)
-# .__getitem__(int)
-assert_type(_a_nd[0], np.str_)
-assert_type(_a_1d[0], np.bytes_)
-assert_type(_a_2d[0], np.int8)
-# .__getitem__(slice)
-assert_type(_a_nd[::], np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d[::], np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d[::], np.ndarray[tuple[int], np.dtypes.Int8DType])
-# .__getitem__(EllipsisType)
-assert_type(_a_nd[...], np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d[...], np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d[...], np.ndarray[tuple[int], np.dtypes.Int8DType])
-# .__getitem__(list[!])
-assert_type(_a_nd[[]], np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d[[]], np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d[[]], np.ndarray[tuple[int], np.dtypes.Int8DType])
-# .__getitem__(list[int])
-assert_type(_a_nd[[0]], np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d[[0]], np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d[[0]], np.ndarray[tuple[int], np.dtypes.Int8DType])
-# .__getitem__(list[list[int]])
-assert_type(_a_nd[[[0]]], np.ndarray[tuple[int, int], np.dtypes.StrDType])
-assert_type(_a_1d[[[0]]], np.ndarray[tuple[int, int], np.dtypes.BytesDType])
-assert_type(_a_2d[[[0]]], np.ndarray[tuple[int, int], np.dtypes.Int8DType])
-# .__getitem__(list[list[list[list[int]]]])
-assert_type(_a_nd[[[[[0]]]]], np.ndarray[tuple[Any, ...], np.dtypes.StrDType])
-assert_type(_a_1d[[[[[0]]]]], np.ndarray[tuple[Any, ...], np.dtypes.BytesDType])
-assert_type(_a_2d[[[[[0]]]]], np.ndarray[tuple[Any, ...], np.dtypes.Int8DType])
-
-# __array__()
-assert_type(_a_nd.__array__(), np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d.__array__(), np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d.__array__(), np.ndarray[tuple[int], np.dtypes.Int8DType])
-
-# .copy()
-assert_type(_a_nd.copy(), np.ndarray[tuple[int], np.dtypes.StrDType])
-assert_type(_a_1d.copy(), np.ndarray[tuple[int], np.dtypes.BytesDType])
-assert_type(_a_2d.copy(), np.ndarray[tuple[int], np.dtypes.Int8DType])
+# `dtype` and `copy` are no-ops in `flatiter.__array__`
+_a_nd.__array__(_dtype)  # type: ignore[arg-type]
+_a_nd.__array__(dtype=_dtype)  # type: ignore[call-arg]
+_a_nd.__array__(copy=True)  # type: ignore[arg-type]

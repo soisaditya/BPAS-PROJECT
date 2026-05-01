@@ -1,25 +1,15 @@
-import contextlib
 from collections.abc import Callable
-from typing import assert_type
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from numpy._core.arrayprint import _FormatOptions
 
-AR: npt.NDArray[np.int64]
-func_float: Callable[[np.floating], str]
-func_int: Callable[[np.integer], str]
+AR: npt.NDArray[np.float64]
+func1: Callable[[Any], str]
+func2: Callable[[np.integer], str]
 
-assert_type(np.get_printoptions(), _FormatOptions)
-assert_type(
-    np.array2string(AR, formatter={"float_kind": func_float, "int_kind": func_int}),
-    str,
-)
-assert_type(np.format_float_scientific(1.0), str)
-assert_type(np.format_float_positional(1), str)
-assert_type(np.array_repr(AR), str)
-assert_type(np.array_str(AR), str)
-
-assert_type(np.printoptions(), contextlib._GeneratorContextManager[_FormatOptions])
-with np.printoptions() as dct:
-    assert_type(dct, _FormatOptions)
+np.array2string(AR, legacy="1.14")  # type: ignore[arg-type]
+np.array2string(AR, sign="*")  # type: ignore[arg-type]
+np.array2string(AR, floatmode="default")  # type: ignore[arg-type]
+np.array2string(AR, formatter={"A": func1})  # type: ignore[arg-type]
+np.array2string(AR, formatter={"float": func2})  # type: ignore[arg-type]

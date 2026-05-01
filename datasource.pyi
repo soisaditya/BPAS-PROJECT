@@ -1,23 +1,16 @@
 from pathlib import Path
-from typing import IO, Any, assert_type
 
 import numpy as np
 
-path1: Path
-path2: str
+path: Path
+d1: np.lib.npyio.DataSource
 
-d1 = np.lib.npyio.DataSource(path1)
-d2 = np.lib.npyio.DataSource(path2)
-d3 = np.lib.npyio.DataSource(None)
+d1.abspath(path)  # type: ignore[arg-type]
+d1.abspath(b"...")  # type: ignore[arg-type]
 
-assert_type(d1.abspath("..."), str)
-assert_type(d2.abspath("..."), str)
-assert_type(d3.abspath("..."), str)
+d1.exists(path)  # type: ignore[arg-type]
+d1.exists(b"...")  # type: ignore[arg-type]
 
-assert_type(d1.exists("..."), bool)
-assert_type(d2.exists("..."), bool)
-assert_type(d3.exists("..."), bool)
-
-assert_type(d1.open("...", "r"), IO[Any])
-assert_type(d2.open("...", encoding="utf8"), IO[Any])
-assert_type(d3.open("...", newline="/n"), IO[Any])
+d1.open(path, "r")  # type: ignore[arg-type]
+d1.open(b"...", encoding="utf8")  # type: ignore[arg-type]
+d1.open(None, newline="/n")  # type: ignore[arg-type]
