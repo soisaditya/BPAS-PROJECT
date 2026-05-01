@@ -1,11 +1,10 @@
-import inspect
 import sys
 
 import pytest
 
 import numpy as np
 from numpy import random
-from numpy.testing import IS_PYPY, assert_, assert_array_equal, assert_raises
+from numpy.testing import assert_, assert_array_equal, assert_raises
 
 
 class TestRegression:
@@ -14,13 +13,13 @@ class TestRegression:
         # Make sure generated random variables are in [-pi, pi].
         # Regression test for ticket #986.
         for mu in np.linspace(-7., 7., 5):
-            r = random.mtrand.vonmises(mu, 1, 50)
+            r = random.vonmises(mu, 1, 50)
             assert_(np.all(r > -np.pi) and np.all(r <= np.pi))
 
     def test_hypergeometric_range(self):
         # Test for ticket #921
-        assert_(np.all(np.random.hypergeometric(3, 18, 11, size=10) < 4))
-        assert_(np.all(np.random.hypergeometric(18, 3, 11, size=10) > 0))
+        assert_(np.all(random.hypergeometric(3, 18, 11, size=10) < 4))
+        assert_(np.all(random.hypergeometric(18, 3, 11, size=10) > 0))
 
         # Test for ticket #5623
         args = [
@@ -31,13 +30,13 @@ class TestRegression:
             # Check for 64-bit systems
             args.append((2**40 - 2, 2**40 - 2, 2**40 - 2))
         for arg in args:
-            assert_(np.random.hypergeometric(*arg) > 0)
+            assert_(random.hypergeometric(*arg) > 0)
 
     def test_logseries_convergence(self):
         # Test for ticket #923
         N = 1000
-        np.random.seed(0)
-        rvsn = np.random.logseries(0.8, size=N)
+        random.seed(0)
+        rvsn = random.logseries(0.8, size=N)
         # these two frequency counts should be close to theoretical
         # numbers with this large sample
         # theoretical large N result is 0.49706795
@@ -55,7 +54,7 @@ class TestRegression:
                   [(1, 1), (2, 2), (3, 3), None],
                   [1, (2, 2), (3, 3), None],
                   [(1, 1), 2, 3, None]]:
-            rng = np.random.RandomState(12345)
+            rng = random.RandomState(12345)
             shuffled = list(t)
             rng.shuffle(shuffled)
             expected = np.array([t[0], t[3], t[1], t[2]], dtype=object)
@@ -63,10 +62,10 @@ class TestRegression:
 
     def test_call_within_randomstate(self):
         # Check that custom RandomState does not call into global state
-        m = np.random.RandomState()
+        m = random.RandomState()
         res = np.array([0, 8, 7, 2, 1, 9, 4, 7, 0, 3])
         for i in range(3):
-            np.random.seed(i)
+            random.seed(i)
             m.seed(4321)
             # If m.state is not honored, the result will change
             assert_array_equal(m.choice(10, size=10, p=np.ones(10) / 10.), res)
@@ -75,40 +74,40 @@ class TestRegression:
         # Test for multivariate_normal issue with 'size' argument.
         # Check that the multivariate_normal size argument can be a
         # numpy integer.
-        np.random.multivariate_normal([0], [[0]], size=1)
-        np.random.multivariate_normal([0], [[0]], size=np.int_(1))
-        np.random.multivariate_normal([0], [[0]], size=np.int64(1))
+        random.multivariate_normal([0], [[0]], size=1)
+        random.multivariate_normal([0], [[0]], size=np.int_(1))
+        random.multivariate_normal([0], [[0]], size=np.int64(1))
 
     def test_beta_small_parameters(self):
         # Test that beta with small a and b parameters does not produce
         # NaNs due to roundoff errors causing 0 / 0, gh-5851
-        np.random.seed(1234567890)
-        x = np.random.beta(0.0001, 0.0001, size=100)
-        assert_(not np.any(np.isnan(x)), 'Nans in np.random.beta')
+        random.seed(1234567890)
+        x = random.beta(0.0001, 0.0001, size=100)
+        assert_(not np.any(np.isnan(x)), 'Nans in random.beta')
 
     def test_choice_sum_of_probs_tolerance(self):
         # The sum of probs should be 1.0 with some tolerance.
         # For low precision dtypes the tolerance was too tight.
         # See numpy github issue 6123.
-        np.random.seed(1234)
+        random.seed(1234)
         a = [1, 2, 3]
         counts = [4, 4, 2]
         for dt in np.float16, np.float32, np.float64:
             probs = np.array(counts, dtype=dt) / sum(counts)
-            c = np.random.choice(a, p=probs)
+            c = random.choice(a, p=probs)
             assert_(c in a)
-            assert_raises(ValueError, np.random.choice, a, p=probs * 0.9)
+            assert_raises(ValueError, random.choice, a, p=probs * 0.9)
 
     def test_shuffle_of_array_of_different_length_strings(self):
         # Test that permuting an array of different length strings
         # will not cause a segfault on garbage collection
         # Tests gh-7710
-        np.random.seed(1234)
+        random.seed(1234)
 
         a = np.array(['a', 'a' * 1000])
 
         for _ in range(100):
-            np.random.shuffle(a)
+            random.shuffle(a)
 
         # Force Garbage Collection - should not segfault.
         import gc
@@ -118,11 +117,11 @@ class TestRegression:
         # Test that permuting an array of objects will not cause
         # a segfault on garbage collection.
         # See gh-7719
-        np.random.seed(1234)
+        random.seed(1234)
         a = np.array([np.arange(1), np.arange(4)], dtype=object)
 
         for _ in range(1000):
-            np.random.shuffle(a)
+            random.shuffle(a)
 
         # Force Garbage Collection - should not segfault.
         import gc
@@ -132,7 +131,7 @@ class TestRegression:
         class N(np.ndarray):
             pass
 
-        rng = np.random.RandomState(1)
+        rng = random.RandomState(1)
         orig = np.arange(3).view(N)
         perm = rng.permutation(orig)
         assert_array_equal(perm, np.array([0, 2, 1]))
@@ -144,32 +143,71 @@ class TestRegression:
             def __array__(self, dtype=None, copy=None):
                 return self.a
 
-        rng = np.random.RandomState(1)
+        rng = random.RandomState(1)
         m = M()
         perm = rng.permutation(m)
         assert_array_equal(perm, np.array([2, 1, 4, 0, 3]))
         assert_array_equal(m.__array__(), np.arange(5))
 
-    @pytest.mark.skipif(sys.flags.optimize == 2, reason="Python running -OO")
-    @pytest.mark.skipif(IS_PYPY, reason="PyPy does not modify tp_doc")
-    @pytest.mark.parametrize(
-        "cls",
-        [
-            random.Generator,
-            random.MT19937,
-            random.PCG64,
-            random.PCG64DXSM,
-            random.Philox,
-            random.RandomState,
-            random.SFC64,
-            random.BitGenerator,
-            random.SeedSequence,
-            random.bit_generator.SeedlessSeedSequence,
-        ],
-    )
-    def test_inspect_signature(self, cls: type) -> None:
-        assert hasattr(cls, "__text_signature__")
-        try:
-            inspect.signature(cls)
-        except ValueError:
-            pytest.fail(f"invalid signature: {cls.__module__}.{cls.__qualname__}")
+    def test_warns_byteorder(self):
+        # GH 13159
+        other_byteord_dt = '<i4' if sys.byteorder == 'big' else '>i4'
+        with pytest.deprecated_call(match='non-native byteorder is not'):
+            random.randint(0, 200, size=10, dtype=other_byteord_dt)
+
+    def test_named_argument_initialization(self):
+        # GH 13669
+        rs1 = np.random.RandomState(123456789)
+        rs2 = np.random.RandomState(seed=123456789)
+        assert rs1.randint(0, 100) == rs2.randint(0, 100)
+
+    def test_choice_retun_dtype(self):
+        # GH 9867, now long since the NumPy default changed.
+        c = np.random.choice(10, p=[.1] * 10, size=2)
+        assert c.dtype == np.dtype(np.long)
+        c = np.random.choice(10, p=[.1] * 10, replace=False, size=2)
+        assert c.dtype == np.dtype(np.long)
+        c = np.random.choice(10, size=2)
+        assert c.dtype == np.dtype(np.long)
+        c = np.random.choice(10, replace=False, size=2)
+        assert c.dtype == np.dtype(np.long)
+
+    @pytest.mark.skipif(np.iinfo('l').max < 2**32,
+                        reason='Cannot test with 32-bit C long')
+    def test_randint_117(self):
+        # GH 14189
+        rng = random.RandomState(0)
+        expected = np.array([2357136044, 2546248239, 3071714933, 3626093760,
+                             2588848963, 3684848379, 2340255427, 3638918503,
+                             1819583497, 2678185683], dtype='int64')
+        actual = rng.randint(2**32, size=10)
+        assert_array_equal(actual, expected)
+
+    def test_p_zero_stream(self):
+        # Regression test for gh-14522.  Ensure that future versions
+        # generate the same variates as version 1.16.
+        rng = random.RandomState(12345)
+        assert_array_equal(rng.binomial(1, [0, 0.25, 0.5, 0.75, 1]),
+                           [0, 0, 0, 1, 1])
+
+    def test_n_zero_stream(self):
+        # Regression test for gh-14522.  Ensure that future versions
+        # generate the same variates as version 1.16.
+        rng = random.RandomState(8675309)
+        expected = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                             [3, 4, 2, 3, 3, 1, 5, 3, 1, 3]])
+        assert_array_equal(rng.binomial([[0], [10]], 0.25, size=(2, 10)),
+                           expected)
+
+
+def test_multinomial_empty():
+    # gh-20483
+    # Ensure that empty p-vals are correctly handled
+    assert random.multinomial(10, []).shape == (0,)
+    assert random.multinomial(3, [], size=(7, 5, 3)).shape == (7, 5, 3, 0)
+
+
+def test_multinomial_1d_pval():
+    # gh-20483
+    with pytest.raises(TypeError, match="pvals must be a 1-d"):
+        random.multinomial(10, 0.3)

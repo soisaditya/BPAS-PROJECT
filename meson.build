@@ -1,10 +1,7 @@
-project(
-  'checks',
-  'c', 'cython',
-  meson_version: '>=1.8.3',
-)
+project('random-build-examples', 'c', 'cpp', 'cython')
 
-py = import('python').find_installation(pure: false)
+py_mod = import('python')
+py3 = py_mod.find_installation(pure: false)
 
 cc = meson.get_compiler('c')
 cy = meson.get_compiler('cython')
@@ -14,50 +11,43 @@ if not cy.version().version_compare('>=3.0.6')
   error('tests requires Cython >= 3.0.6')
 endif
 
-npy_include_path = run_command(py, [
-    '-c',
-    'import os; os.chdir(".."); import numpy; print(os.path.abspath(numpy.get_include()))'
-    ], check: true).stdout().strip()
+base_cython_args = []
+if cy.version().version_compare('>=3.1.0')
+  base_cython_args += ['-Xfreethreading_compatible=True']
+endif
 
-npy_path = run_command(py, [
-    '-c',
-    'import os; os.chdir(".."); import numpy; print(os.path.dirname(numpy.__file__).removesuffix("numpy"))'
-    ], check: true).stdout().strip()
+_numpy_abs = run_command(py3, ['-c',
+               'import os; os.chdir(".."); import numpy; print(os.path.abspath(numpy.get_include() + "../../.."))'],
+                         check: true).stdout().strip()
 
-# TODO: This is a hack due to https://github.com/cython/cython/issues/5820,
-# where cython may not find the right __init__.pyd file.
-add_project_arguments('-I', npy_path, language : 'cython')
+npymath_path = _numpy_abs / '_core' / 'lib'
+npy_include_path = _numpy_abs / '_core' / 'include'
+npyrandom_path = _numpy_abs / 'random' / 'lib'
+npymath_lib = cc.find_library('npymath', dirs: npymath_path)
+npyrandom_lib = cc.find_library('npyrandom', dirs: npyrandom_path)
 
-py.extension_module(
-    'limited_api1',
-    'limited_api1.c',
-    c_args: [
-      '-DNPY_NO_DEPRECATED_API=NPY_1_21_API_VERSION',
-    ],
-    include_directories: [npy_include_path],
-    limited_api: '3.9',
-)
-
-py.extension_module(
-    'limited_api_latest',
-    'limited_api_latest.c',
-    c_args: [
-      '-DNPY_NO_DEPRECATED_API=NPY_1_21_API_VERSION',
-    ],
-    include_directories: [npy_include_path],
-    limited_api: py.language_version(),
-)
-
-py.extension_module(
-    'limited_api2',
-    'limited_api2.pyx',
+py3.extension_module(
+    'extending_distributions',
+    'extending_distributions.pyx',
     install: false,
-    c_args: [
-      '-DNPY_NO_DEPRECATED_API=0',
-      # Require 1.25+ to test datetime additions
-      '-DNPY_TARGET_VERSION=NPY_2_0_API_VERSION',
-      '-DCYTHON_LIMITED_API=1',
-    ],
     include_directories: [npy_include_path],
-    limited_api: '3.9',
+    dependencies: [npyrandom_lib, npymath_lib],
+    cython_args: base_cython_args,
+)
+py3.extension_module(
+    'extending',
+    'extending.pyx',
+    install: false,
+    include_directories: [npy_include_path],
+    dependencies: [npyrandom_lib, npymath_lib],
+    cython_args: base_cython_args,
+)
+py3.extension_module(
+    'extending_cpp',
+    'extending_distributions.pyx',
+    install: false,
+    override_options : ['cython_language=cpp'],
+    cython_args: base_cython_args + ['--module-name', 'extending_cpp'],
+    include_directories: [npy_include_path],
+    dependencies: [npyrandom_lib, npymath_lib],
 )
