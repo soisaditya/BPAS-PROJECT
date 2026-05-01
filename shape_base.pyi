@@ -1,182 +1,52 @@
-from collections.abc import Sequence
-from typing import Any, SupportsIndex, TypeVar, overload
+from typing import Any, assert_type
 
-from numpy import _CastingKind, generic
-from numpy._typing import ArrayLike, DTypeLike, NDArray, _ArrayLike, _DTypeLike
+import numpy as np
+import numpy.typing as npt
 
-__all__ = [
-    "atleast_1d",
-    "atleast_2d",
-    "atleast_3d",
-    "block",
-    "hstack",
-    "stack",
-    "unstack",
-    "vstack",
-]
+i8: np.int64
+f8: np.float64
 
-_T = TypeVar("_T")
-_ScalarT = TypeVar("_ScalarT", bound=generic)
-_ScalarT1 = TypeVar("_ScalarT1", bound=generic)
-_ScalarT2 = TypeVar("_ScalarT2", bound=generic)
-_ArrayT = TypeVar("_ArrayT", bound=NDArray[Any])
+AR_b: npt.NDArray[np.bool]
+AR_i8: npt.NDArray[np.int64]
+AR_f8: npt.NDArray[np.float64]
 
-###
+AR_LIKE_f8: list[float]
 
-# keep in sync with `numpy.ma.extras.atleast_1d`
-@overload
-def atleast_1d(a0: _ArrayLike[_ScalarT], /) -> NDArray[_ScalarT]: ...
-@overload
-def atleast_1d(a0: _ArrayLike[_ScalarT1], a1: _ArrayLike[_ScalarT2], /) -> tuple[NDArray[_ScalarT1], NDArray[_ScalarT2]]: ...
-@overload
-def atleast_1d(a0: _ArrayLike[_ScalarT], a1: _ArrayLike[_ScalarT], /, *arys: _ArrayLike[_ScalarT]) -> tuple[NDArray[_ScalarT], ...]: ...
-@overload
-def atleast_1d(a0: ArrayLike, /) -> NDArray[Any]: ...
-@overload
-def atleast_1d(a0: ArrayLike, a1: ArrayLike, /) -> tuple[NDArray[Any], NDArray[Any]]: ...
-@overload
-def atleast_1d(a0: ArrayLike, a1: ArrayLike, /, *ai: ArrayLike) -> tuple[NDArray[Any], ...]: ...
+assert_type(np.take_along_axis(AR_f8, AR_i8, axis=1), npt.NDArray[np.float64])
+assert_type(np.take_along_axis(f8, AR_i8, axis=None), npt.NDArray[np.float64])
 
-# keep in sync with `numpy.ma.extras.atleast_2d`
-@overload
-def atleast_2d(a0: _ArrayLike[_ScalarT], /) -> NDArray[_ScalarT]: ...
-@overload
-def atleast_2d(a0: _ArrayLike[_ScalarT1], a1: _ArrayLike[_ScalarT2], /) -> tuple[NDArray[_ScalarT1], NDArray[_ScalarT2]]: ...
-@overload
-def atleast_2d(a0: _ArrayLike[_ScalarT], a1: _ArrayLike[_ScalarT], /, *arys: _ArrayLike[_ScalarT]) -> tuple[NDArray[_ScalarT], ...]: ...
-@overload
-def atleast_2d(a0: ArrayLike, /) -> NDArray[Any]: ...
-@overload
-def atleast_2d(a0: ArrayLike, a1: ArrayLike, /) -> tuple[NDArray[Any], NDArray[Any]]: ...
-@overload
-def atleast_2d(a0: ArrayLike, a1: ArrayLike, /, *ai: ArrayLike) -> tuple[NDArray[Any], ...]: ...
+assert_type(np.put_along_axis(AR_f8, AR_i8, "1.0", axis=1), None)
 
-# keep in sync with `numpy.ma.extras.atleast_3d`
-@overload
-def atleast_3d(a0: _ArrayLike[_ScalarT], /) -> NDArray[_ScalarT]: ...
-@overload
-def atleast_3d(a0: _ArrayLike[_ScalarT1], a1: _ArrayLike[_ScalarT2], /) -> tuple[NDArray[_ScalarT1], NDArray[_ScalarT2]]: ...
-@overload
-def atleast_3d(a0: _ArrayLike[_ScalarT], a1: _ArrayLike[_ScalarT], /, *arys: _ArrayLike[_ScalarT]) -> tuple[NDArray[_ScalarT], ...]: ...
-@overload
-def atleast_3d(a0: ArrayLike, /) -> NDArray[Any]: ...
-@overload
-def atleast_3d(a0: ArrayLike, a1: ArrayLike, /) -> tuple[NDArray[Any], NDArray[Any]]: ...
-@overload
-def atleast_3d(a0: ArrayLike, a1: ArrayLike, /, *ai: ArrayLike) -> tuple[NDArray[Any], ...]: ...
+assert_type(np.expand_dims(AR_i8, 2), npt.NDArray[np.int64])
+assert_type(np.expand_dims(AR_LIKE_f8, 2), npt.NDArray[Any])
 
-# used by numpy.lib._shape_base_impl
-def _arrays_for_stack_dispatcher(arrays: Sequence[_T]) -> tuple[_T, ...]: ...
+assert_type(np.column_stack([AR_i8]), npt.NDArray[np.int64])
+assert_type(np.column_stack([AR_LIKE_f8]), npt.NDArray[Any])
 
-# keep in sync with `numpy.ma.extras.vstack`
-@overload
-def vstack(
-    tup: Sequence[_ArrayLike[_ScalarT]],
-    *,
-    dtype: None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def vstack(
-    tup: Sequence[ArrayLike],
-    *,
-    dtype: _DTypeLike[_ScalarT],
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def vstack(
-    tup: Sequence[ArrayLike],
-    *,
-    dtype: DTypeLike | None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[Any]: ...
+assert_type(np.dstack([AR_i8]), npt.NDArray[np.int64])
+assert_type(np.dstack([AR_LIKE_f8]), npt.NDArray[Any])
 
-# keep in sync with `numpy.ma.extras.hstack`
-@overload
-def hstack(
-    tup: Sequence[_ArrayLike[_ScalarT]],
-    *,
-    dtype: None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def hstack(
-    tup: Sequence[ArrayLike],
-    *,
-    dtype: _DTypeLike[_ScalarT],
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def hstack(
-    tup: Sequence[ArrayLike],
-    *,
-    dtype: DTypeLike | None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[Any]: ...
+assert_type(np.array_split(AR_i8, [3, 5, 6, 10]), list[npt.NDArray[np.int64]])
+assert_type(np.array_split(AR_LIKE_f8, [3, 5, 6, 10]), list[npt.NDArray[Any]])
 
-# keep in sync with `numpy.ma.extras.stack`
-@overload
-def stack(
-    arrays: Sequence[_ArrayLike[_ScalarT]],
-    axis: SupportsIndex = 0,
-    out: None = None,
-    *,
-    dtype: None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def stack(
-    arrays: Sequence[ArrayLike],
-    axis: SupportsIndex = 0,
-    out: None = None,
-    *,
-    dtype: _DTypeLike[_ScalarT],
-    casting: _CastingKind = "same_kind"
-) -> NDArray[_ScalarT]: ...
-@overload
-def stack(
-    arrays: Sequence[ArrayLike],
-    axis: SupportsIndex = 0,
-    out: None = None,
-    *,
-    dtype: DTypeLike | None = None,
-    casting: _CastingKind = "same_kind"
-) -> NDArray[Any]: ...
-@overload
-def stack(
-    arrays: Sequence[ArrayLike],
-    axis: SupportsIndex,
-    out: _ArrayT,
-    *,
-    dtype: DTypeLike | None = None,
-    casting: _CastingKind = "same_kind",
-) -> _ArrayT: ...
-@overload
-def stack(
-    arrays: Sequence[ArrayLike],
-    axis: SupportsIndex = 0,
-    *,
-    out: _ArrayT,
-    dtype: DTypeLike | None = None,
-    casting: _CastingKind = "same_kind",
-) -> _ArrayT: ...
+assert_type(np.split(AR_i8, [3, 5, 6, 10]), list[npt.NDArray[np.int64]])
+assert_type(np.split(AR_LIKE_f8, [3, 5, 6, 10]), list[npt.NDArray[Any]])
 
-@overload
-def unstack(
-    array: _ArrayLike[_ScalarT],
-    /,
-    *,
-    axis: int = 0,
-) -> tuple[NDArray[_ScalarT], ...]: ...
-@overload
-def unstack(
-    array: ArrayLike,
-    /,
-    *,
-    axis: int = 0,
-) -> tuple[NDArray[Any], ...]: ...
+assert_type(np.hsplit(AR_i8, [3, 5, 6, 10]), list[npt.NDArray[np.int64]])
+assert_type(np.hsplit(AR_LIKE_f8, [3, 5, 6, 10]), list[npt.NDArray[Any]])
 
-@overload
-def block(arrays: _ArrayLike[_ScalarT]) -> NDArray[_ScalarT]: ...
-@overload
-def block(arrays: ArrayLike) -> NDArray[Any]: ...
+assert_type(np.vsplit(AR_i8, [3, 5, 6, 10]), list[npt.NDArray[np.int64]])
+assert_type(np.vsplit(AR_LIKE_f8, [3, 5, 6, 10]), list[npt.NDArray[Any]])
+
+assert_type(np.dsplit(AR_i8, [3, 5, 6, 10]), list[npt.NDArray[np.int64]])
+assert_type(np.dsplit(AR_LIKE_f8, [3, 5, 6, 10]), list[npt.NDArray[Any]])
+
+assert_type(np.kron(AR_b, AR_b), npt.NDArray[np.bool])
+assert_type(np.kron(AR_b, AR_i8), npt.NDArray[np.signedinteger])
+assert_type(np.kron(AR_f8, AR_f8), npt.NDArray[np.floating])
+
+assert_type(np.tile(AR_i8, 5), npt.NDArray[np.int64])
+assert_type(np.tile(AR_LIKE_f8, [2, 2]), npt.NDArray[Any])
+
+assert_type(np.unstack(AR_i8, axis=0), tuple[npt.NDArray[np.int64], ...])
+assert_type(np.unstack(AR_LIKE_f8, axis=0), tuple[npt.NDArray[Any], ...])

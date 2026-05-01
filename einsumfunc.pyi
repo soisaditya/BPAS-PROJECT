@@ -1,184 +1,39 @@
-from collections.abc import Sequence
-from typing import Any, Literal, TypeAlias, TypeVar, overload
+from typing import Any, assert_type
 
 import numpy as np
-from numpy import _OrderKACF, number
-from numpy._typing import (
-    NDArray,
-    _ArrayLikeBool_co,
-    _ArrayLikeComplex_co,
-    _ArrayLikeFloat_co,
-    _ArrayLikeInt_co,
-    _ArrayLikeObject_co,
-    _ArrayLikeUInt_co,
-    _DTypeLikeBool,
-    _DTypeLikeComplex,
-    _DTypeLikeComplex_co,
-    _DTypeLikeFloat,
-    _DTypeLikeInt,
-    _DTypeLikeObject,
-    _DTypeLikeUInt,
-)
+import numpy.typing as npt
 
-__all__ = ["einsum", "einsum_path"]
+AR_LIKE_b: list[bool]
+AR_LIKE_u: list[np.uint32]
+AR_LIKE_i: list[int]
+AR_LIKE_f: list[float]
+AR_LIKE_c: list[complex]
+AR_LIKE_U: list[str]
+AR_o: npt.NDArray[np.object_]
 
-_ArrayT = TypeVar(
-    "_ArrayT",
-    bound=NDArray[np.bool | number],
-)
+OUT_f: npt.NDArray[np.float64]
 
-_OptimizeKind: TypeAlias = bool | Literal["greedy", "optimal"] | Sequence[Any] | None
-_CastingSafe: TypeAlias = Literal["no", "equiv", "safe", "same_kind"]
-_CastingUnsafe: TypeAlias = Literal["unsafe"]
+assert_type(np.einsum("i,i->i", AR_LIKE_b, AR_LIKE_b), Any)
+assert_type(np.einsum("i,i->i", AR_o, AR_o), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_u, AR_LIKE_u), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_i, AR_LIKE_i), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_f, AR_LIKE_f), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_c, AR_LIKE_c), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_b, AR_LIKE_i), Any)
+assert_type(np.einsum("i,i,i,i->i", AR_LIKE_b, AR_LIKE_u, AR_LIKE_i, AR_LIKE_c), Any)
 
-# TODO: Properly handle the `casting`-based combinatorics
-# TODO: We need to evaluate the content `__subscripts` in order
-# to identify whether or an array or scalar is returned. At a cursory
-# glance this seems like something that can quite easily be done with
-# a mypy plugin.
-# Something like `is_scalar = bool(__subscripts.partition("->")[-1])`
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeBool_co,
-    out: None = None,
-    dtype: _DTypeLikeBool | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeUInt_co,
-    out: None = None,
-    dtype: _DTypeLikeUInt | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeInt_co,
-    out: None = None,
-    dtype: _DTypeLikeInt | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeFloat_co,
-    out: None = None,
-    dtype: _DTypeLikeFloat | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeComplex_co,
-    out: None = None,
-    dtype: _DTypeLikeComplex | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: Any,
-    casting: _CastingUnsafe,
-    dtype: _DTypeLikeComplex_co | None = ...,
-    out: None = None,
-    order: _OrderKACF = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeComplex_co,
-    out: _ArrayT,
-    dtype: _DTypeLikeComplex_co | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> _ArrayT: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: Any,
-    out: _ArrayT,
-    casting: _CastingUnsafe,
-    dtype: _DTypeLikeComplex_co | None = ...,
-    order: _OrderKACF = ...,
-    optimize: _OptimizeKind = False,
-) -> _ArrayT: ...
+assert_type(np.einsum("i,i->i", AR_LIKE_c, AR_LIKE_c, out=OUT_f), npt.NDArray[np.float64])
+assert_type(np.einsum("i,i->i", AR_LIKE_U, AR_LIKE_U, dtype=bool, casting="unsafe", out=OUT_f), npt.NDArray[np.float64])
+assert_type(np.einsum("i,i->i", AR_LIKE_f, AR_LIKE_f, dtype="c16"), Any)
+assert_type(np.einsum("i,i->i", AR_LIKE_U, AR_LIKE_U, dtype=bool, casting="unsafe"), Any)
 
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeObject_co,
-    out: None = None,
-    dtype: _DTypeLikeObject | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: Any,
-    casting: _CastingUnsafe,
-    dtype: _DTypeLikeObject | None = ...,
-    out: None = None,
-    order: _OrderKACF = ...,
-    optimize: _OptimizeKind = False,
-) -> Any: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeObject_co,
-    out: _ArrayT,
-    dtype: _DTypeLikeObject | None = ...,
-    order: _OrderKACF = ...,
-    casting: _CastingSafe = ...,
-    optimize: _OptimizeKind = False,
-) -> _ArrayT: ...
-@overload
-def einsum(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: Any,
-    out: _ArrayT,
-    casting: _CastingUnsafe,
-    dtype: _DTypeLikeObject | None = ...,
-    order: _OrderKACF = ...,
-    optimize: _OptimizeKind = False,
-) -> _ArrayT: ...
+assert_type(np.einsum_path("i,i->i", AR_LIKE_b, AR_LIKE_b), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i->i", AR_LIKE_u, AR_LIKE_u), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i->i", AR_LIKE_i, AR_LIKE_i), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i->i", AR_LIKE_f, AR_LIKE_f), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i->i", AR_LIKE_c, AR_LIKE_c), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i->i", AR_LIKE_b, AR_LIKE_i), tuple[list[Any], str])
+assert_type(np.einsum_path("i,i,i,i->i", AR_LIKE_b, AR_LIKE_u, AR_LIKE_i, AR_LIKE_c), tuple[list[Any], str])
 
-# NOTE: `einsum_call` is a hidden kwarg unavailable for public use.
-# It is therefore excluded from the signatures below.
-# NOTE: In practice the list consists of a `str` (first element)
-# and a variable number of integer tuples.
-def einsum_path(
-    subscripts: str | _ArrayLikeInt_co,
-    /,
-    *operands: _ArrayLikeComplex_co | _DTypeLikeObject,
-    optimize: _OptimizeKind = "greedy",
-    einsum_call: Literal[False] = False,
-) -> tuple[list[Any], str]: ...
+assert_type(np.einsum([[1, 1], [1, 1]], AR_LIKE_i, AR_LIKE_i), Any)
+assert_type(np.einsum_path([[1, 1], [1, 1]], AR_LIKE_i, AR_LIKE_i), tuple[list[Any], str])

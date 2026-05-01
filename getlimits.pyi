@@ -1,124 +1,53 @@
-from functools import cached_property
-from types import GenericAlias
-from typing import Final, Generic, Self, overload
-from typing_extensions import TypeVar
+from typing import assert_type
 
 import numpy as np
-from numpy._typing import (
-    _CLongDoubleCodes,
-    _Complex64Codes,
-    _Complex128Codes,
-    _DTypeLike,
-    _Float16Codes,
-    _Float32Codes,
-    _Float64Codes,
-    _Int8Codes,
-    _Int16Codes,
-    _Int32Codes,
-    _Int64Codes,
-    _IntPCodes,
-    _LongDoubleCodes,
-    _UInt8Codes,
-    _UInt16Codes,
-    _UInt32Codes,
-    _UInt64Codes,
-)
 
-__all__ = ["finfo", "iinfo"]
+f: float
+f8: np.float64
+c8: np.complex64
+c16: np.complex128
 
-###
+i: int
+i8: np.int64
+u4: np.uint32
 
-_IntegerT_co = TypeVar("_IntegerT_co", bound=np.integer, default=np.integer, covariant=True)
-_FloatingT_co = TypeVar("_FloatingT_co", bound=np.floating, default=np.floating, covariant=True)
+finfo_f8: np.finfo[np.float64]
+iinfo_i8: np.iinfo[np.int64]
 
-###
+assert_type(np.finfo(f), np.finfo[np.float64])
+assert_type(np.finfo(f8), np.finfo[np.float64])
+assert_type(np.finfo(c8), np.finfo[np.float32])
+assert_type(np.finfo(c16), np.finfo[np.float64])
+assert_type(np.finfo("f2"), np.finfo[np.float16])
 
-class iinfo(Generic[_IntegerT_co]):
-    dtype: np.dtype[_IntegerT_co]
-    bits: Final[int]
-    kind: Final[str]
-    key: Final[str]
+assert_type(finfo_f8.dtype, np.dtype[np.float64])
+assert_type(finfo_f8.bits, int)
+assert_type(finfo_f8.eps, np.float64)
+assert_type(finfo_f8.epsneg, np.float64)
+assert_type(finfo_f8.iexp, int)
+assert_type(finfo_f8.machep, int)
+assert_type(finfo_f8.max, np.float64)
+assert_type(finfo_f8.maxexp, int)
+assert_type(finfo_f8.min, np.float64)
+assert_type(finfo_f8.minexp, int)
+assert_type(finfo_f8.negep, int)
+assert_type(finfo_f8.nexp, int)
+assert_type(finfo_f8.nmant, int)
+assert_type(finfo_f8.precision, int)
+assert_type(finfo_f8.resolution, np.float64)
+assert_type(finfo_f8.tiny, np.float64)
+assert_type(finfo_f8.smallest_normal, np.float64)
+assert_type(finfo_f8.smallest_subnormal, np.float64)
 
-    @property
-    def min(self, /) -> int: ...
-    @property
-    def max(self, /) -> int: ...
+assert_type(np.iinfo(i), np.iinfo[np.int_])
+assert_type(np.iinfo(i8), np.iinfo[np.int64])
+assert_type(np.iinfo(u4), np.iinfo[np.uint32])
+assert_type(np.iinfo("i2"), np.iinfo[np.int16])
+assert_type(np.iinfo("u2"), np.iinfo[np.uint16])
 
-    #
-    @overload
-    def __init__(self, /, int_type: _IntegerT_co | _DTypeLike[_IntegerT_co]) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.int_], /, int_type: _IntPCodes | type[int] | int) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.int8], /, int_type: _Int8Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.uint8], /, int_type: _UInt8Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.int16], /, int_type: _Int16Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.uint16], /, int_type: _UInt16Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.int32], /, int_type: _Int32Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.uint32], /, int_type: _UInt32Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.int64], /, int_type: _Int64Codes) -> None: ...
-    @overload
-    def __init__(self: iinfo[np.uint64], /, int_type: _UInt64Codes) -> None: ...
-    @overload
-    def __init__(self, /, int_type: str) -> None: ...
-
-    #
-    @classmethod
-    def __class_getitem__(cls, item: object, /) -> GenericAlias: ...
-
-class finfo(Generic[_FloatingT_co]):
-    dtype: np.dtype[_FloatingT_co]  # readonly
-    eps: _FloatingT_co  # readonly
-    _radix: _FloatingT_co  # readonly
-    smallest_normal: _FloatingT_co  # readonly
-    smallest_subnormal: _FloatingT_co  # readonly
-    max: _FloatingT_co  # readonly
-    min: _FloatingT_co  # readonly
-
-    _fmt: str | None  # `__str__` cache
-    _repr: str | None  # `__repr__` cache
-
-    bits: Final[int]
-    maxexp: Final[int]
-    minexp: Final[int]
-    nmant: Final[int]
-    precision: Final[int]
-
-    @classmethod
-    def __class_getitem__(cls, item: object, /) -> GenericAlias: ...
-
-    #
-    @overload
-    def __new__(cls, dtype: _FloatingT_co | _DTypeLike[_FloatingT_co]) -> Self: ...
-    @overload
-    def __new__(cls, dtype: _Float16Codes) -> finfo[np.float16]: ...
-    @overload
-    def __new__(cls, dtype: _Float32Codes | _Complex64Codes | _DTypeLike[np.complex64]) -> finfo[np.float32]: ...
-    @overload
-    def __new__(cls, dtype: _Float64Codes | _Complex128Codes | type[complex] | complex) -> finfo[np.float64]: ...
-    @overload
-    def __new__(cls, dtype: _LongDoubleCodes | _CLongDoubleCodes | _DTypeLike[np.clongdouble]) -> finfo[np.longdouble]: ...
-    @overload
-    def __new__(cls, dtype: str) -> finfo: ...
-
-    #
-    @cached_property
-    def epsneg(self, /) -> _FloatingT_co: ...
-    @cached_property
-    def resolution(self, /) -> _FloatingT_co: ...
-    @cached_property
-    def machep(self, /) -> int: ...
-    @cached_property
-    def negep(self, /) -> int: ...
-    @cached_property
-    def nexp(self, /) -> int: ...
-    @cached_property
-    def iexp(self, /) -> int: ...
-    @cached_property
-    def tiny(self, /) -> _FloatingT_co: ...
+assert_type(iinfo_i8.dtype, np.dtype[np.int64])
+assert_type(iinfo_i8.kind, str)
+assert_type(iinfo_i8.bits, int)
+assert_type(iinfo_i8.key, str)
+assert_type(iinfo_i8.min, int)
+assert_type(iinfo_i8.max, int)
