@@ -1,7 +1,10 @@
-# NOTE: At runtime, this submodule dynamically re-exports any `numpy._core.overrides`
-# member, and issues a `DeprecationWarning` when accessed. But since there is no
-# `__dir__` or `__all__` present, these annotations would be unverifiable. Because
-# this module is also deprecated in favor of `numpy._core`, and therefore not part of
-# the public API, we omit the "re-exports", which in practice would require literal
-# duplication of the stubs in order for the `@deprecated` decorator to be understood
-# by type-checkers.
+from collections.abc import Callable, Hashable
+from typing import Any
+from typing_extensions import TypeIs
+
+import numpy as np
+
+def get_overridable_numpy_ufuncs() -> set[np.ufunc]: ...
+def get_overridable_numpy_array_functions() -> set[Callable[..., Any]]: ...
+def allows_array_ufunc_override(func: object) -> TypeIs[np.ufunc]: ...
+def allows_array_function_override(func: Hashable) -> bool: ...
