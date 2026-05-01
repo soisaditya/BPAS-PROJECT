@@ -1,184 +1,210 @@
 """
-A sub-package for efficiently dealing with polynomials.
+========================
+Random Number Generation
+========================
 
-Within the documentation for this sub-package, a "finite power series,"
-i.e., a polynomial (also referred to simply as a "series") is represented
-by a 1-D numpy array of the polynomial's coefficients, ordered from lowest
-order term to highest.  For example, array([1,2,3]) represents
-``P_0 + 2*P_1 + 3*P_2``, where P_n is the n-th order basis polynomial
-applicable to the specific module in question, e.g., `polynomial` (which
-"wraps" the "standard" basis) or `chebyshev`.  For optimal performance,
-all operations on polynomials, including evaluation at an argument, are
-implemented as operations on the coefficients.  Additional (module-specific)
-information can be found in the docstring for the module of interest.
+Use ``default_rng()`` to create a `Generator` and call its methods.
 
-This package provides *convenience classes* for each of six different kinds
-of polynomials:
+=============== =========================================================
+Generator
+--------------- ---------------------------------------------------------
+Generator       Class implementing all of the random number distributions
+default_rng     Default constructor for ``Generator``
+=============== =========================================================
 
-========================    ================
-**Name**                    **Provides**
-========================    ================
-`~polynomial.Polynomial`    Power series
-`~chebyshev.Chebyshev`      Chebyshev series
-`~legendre.Legendre`        Legendre series
-`~laguerre.Laguerre`        Laguerre series
-`~hermite.Hermite`          Hermite series
-`~hermite_e.HermiteE`       HermiteE series
-========================    ================
+============================================= ===
+BitGenerator Streams that work with Generator
+--------------------------------------------- ---
+MT19937
+PCG64
+PCG64DXSM
+Philox
+SFC64
+============================================= ===
 
-These *convenience classes* provide a consistent interface for creating,
-manipulating, and fitting data with polynomials of different bases.
-The convenience classes are the preferred interface for the `~numpy.polynomial`
-package, and are available from the ``numpy.polynomial`` namespace.
-This eliminates the need to navigate to the corresponding submodules, e.g.
-``np.polynomial.Polynomial`` or ``np.polynomial.Chebyshev`` instead of
-``np.polynomial.polynomial.Polynomial`` or
-``np.polynomial.chebyshev.Chebyshev``, respectively.
-The classes provide a more consistent and concise interface than the
-type-specific functions defined in the submodules for each type of polynomial.
-For example, to fit a Chebyshev polynomial with degree ``1`` to data given
-by arrays ``xdata`` and ``ydata``, the
-`~chebyshev.Chebyshev.fit` class method::
+============================================= ===
+Getting entropy to initialize a BitGenerator
+--------------------------------------------- ---
+SeedSequence
+============================================= ===
 
-    >>> from numpy.polynomial import Chebyshev
-    >>> xdata = [1, 2, 3, 4]
-    >>> ydata = [1, 4, 9, 16]
-    >>> c = Chebyshev.fit(xdata, ydata, deg=1)
 
-is preferred over the `chebyshev.chebfit` function from the
-``np.polynomial.chebyshev`` module::
+Legacy
+------
 
-    >>> from numpy.polynomial.chebyshev import chebfit
-    >>> c = chebfit(xdata, ydata, deg=1)
+For backwards compatibility with previous versions of numpy before 1.17, the
+various aliases to the global `RandomState` methods are left alone and do not
+use the new `Generator` API.
 
-See :doc:`routines.polynomials.classes` for more details.
+==================== =========================================================
+Utility functions
+-------------------- ---------------------------------------------------------
+random               Uniformly distributed floats over ``[0, 1)``
+bytes                Uniformly distributed random bytes.
+permutation          Randomly permute a sequence / generate a random sequence.
+shuffle              Randomly permute a sequence in place.
+choice               Random sample from 1-D array.
+==================== =========================================================
 
-Convenience Classes
-===================
+==================== =========================================================
+Compatibility
+functions - removed
+in the new API
+-------------------- ---------------------------------------------------------
+rand                 Uniformly distributed values.
+randn                Normally distributed values.
+ranf                 Uniformly distributed floating point numbers.
+random_integers      Uniformly distributed integers in a given range.
+                     (deprecated, use ``integers(..., closed=True)`` instead)
+random_sample        Alias for `random_sample`
+randint              Uniformly distributed integers in a given range
+seed                 Seed the legacy random number generator.
+==================== =========================================================
 
-The following lists the various constants and methods common to all of
-the classes representing the various kinds of polynomials. In the following,
-the term ``Poly`` represents any one of the convenience classes (e.g.
-`~polynomial.Polynomial`, `~chebyshev.Chebyshev`, `~hermite.Hermite`, etc.)
-while the lowercase ``p`` represents an **instance** of a polynomial class.
+==================== =========================================================
+Univariate
+distributions
+-------------------- ---------------------------------------------------------
+beta                 Beta distribution over ``[0, 1]``.
+binomial             Binomial distribution.
+chisquare            :math:`\\chi^2` distribution.
+exponential          Exponential distribution.
+f                    F (Fisher-Snedecor) distribution.
+gamma                Gamma distribution.
+geometric            Geometric distribution.
+gumbel               Gumbel distribution.
+hypergeometric       Hypergeometric distribution.
+laplace              Laplace distribution.
+logistic             Logistic distribution.
+lognormal            Log-normal distribution.
+logseries            Logarithmic series distribution.
+negative_binomial    Negative binomial distribution.
+noncentral_chisquare Non-central chi-square distribution.
+noncentral_f         Non-central F distribution.
+normal               Normal / Gaussian distribution.
+pareto               Pareto distribution.
+poisson              Poisson distribution.
+power                Power distribution.
+rayleigh             Rayleigh distribution.
+triangular           Triangular distribution.
+uniform              Uniform distribution.
+vonmises             Von Mises circular distribution.
+wald                 Wald (inverse Gaussian) distribution.
+weibull              Weibull distribution.
+zipf                 Zipf's distribution over ranked data.
+==================== =========================================================
 
-Constants
----------
+==================== ==========================================================
+Multivariate
+distributions
+-------------------- ----------------------------------------------------------
+dirichlet            Multivariate generalization of Beta distribution.
+multinomial          Multivariate generalization of the binomial distribution.
+multivariate_normal  Multivariate generalization of the normal distribution.
+==================== ==========================================================
 
-- ``Poly.domain``     -- Default domain
-- ``Poly.window``     -- Default window
-- ``Poly.basis_name`` -- String used to represent the basis
-- ``Poly.maxpower``   -- Maximum value ``n`` such that ``p**n`` is allowed
+==================== =========================================================
+Standard
+distributions
+-------------------- ---------------------------------------------------------
+standard_cauchy      Standard Cauchy-Lorentz distribution.
+standard_exponential Standard exponential distribution.
+standard_gamma       Standard Gamma distribution.
+standard_normal      Standard normal distribution.
+standard_t           Standard Student's t-distribution.
+==================== =========================================================
 
-Creation
---------
+==================== =========================================================
+Internal functions
+-------------------- ---------------------------------------------------------
+get_state            Get tuple representing internal state of generator.
+set_state            Set state of generator.
+==================== =========================================================
 
-Methods for creating polynomial instances.
-
-- ``Poly.basis(degree)``    -- Basis polynomial of given degree
-- ``Poly.identity()``       -- ``p`` where ``p(x) = x`` for all ``x``
-- ``Poly.fit(x, y, deg)``   -- ``p`` of degree ``deg`` with coefficients
-  determined by the least-squares fit to the data ``x``, ``y``
-- ``Poly.fromroots(roots)`` -- ``p`` with specified roots
-- ``p.copy()``              -- Create a copy of ``p``
-
-Conversion
-----------
-
-Methods for converting a polynomial instance of one kind to another.
-
-- ``p.cast(Poly)``    -- Convert ``p`` to instance of kind ``Poly``
-- ``p.convert(Poly)`` -- Convert ``p`` to instance of kind ``Poly`` or map
-  between ``domain`` and ``window``
-
-Calculus
---------
-- ``p.deriv()`` -- Take the derivative of ``p``
-- ``p.integ()`` -- Integrate ``p``
-
-Validation
-----------
-- ``Poly.has_samecoef(p1, p2)``   -- Check if coefficients match
-- ``Poly.has_samedomain(p1, p2)`` -- Check if domains match
-- ``Poly.has_sametype(p1, p2)``   -- Check if types match
-- ``Poly.has_samewindow(p1, p2)`` -- Check if windows match
-
-Misc
-----
-- ``p.linspace()`` -- Return ``x, p(x)`` at equally-spaced points in ``domain``
-- ``p.mapparms()`` -- Return the parameters for the linear mapping between
-  ``domain`` and ``window``.
-- ``p.roots()``    -- Return the roots of ``p``.
-- ``p.trim()``     -- Remove trailing coefficients.
-- ``p.cutdeg(degree)`` -- Truncate ``p`` to given degree
-- ``p.truncate(size)`` -- Truncate ``p`` to given size
 
 """
-from .chebyshev import Chebyshev
-from .hermite import Hermite
-from .hermite_e import HermiteE
-from .laguerre import Laguerre
-from .legendre import Legendre
-from .polynomial import Polynomial
-
-__all__ = [  # noqa: F822
-    "set_default_printstyle",
-    "polynomial", "Polynomial",
-    "chebyshev", "Chebyshev",
-    "legendre", "Legendre",
-    "hermite", "Hermite",
-    "hermite_e", "HermiteE",
-    "laguerre", "Laguerre",
+__all__ = [
+    'beta',
+    'binomial',
+    'bytes',
+    'chisquare',
+    'choice',
+    'dirichlet',
+    'exponential',
+    'f',
+    'gamma',
+    'geometric',
+    'get_state',
+    'gumbel',
+    'hypergeometric',
+    'laplace',
+    'logistic',
+    'lognormal',
+    'logseries',
+    'multinomial',
+    'multivariate_normal',
+    'negative_binomial',
+    'noncentral_chisquare',
+    'noncentral_f',
+    'normal',
+    'pareto',
+    'permutation',
+    'poisson',
+    'power',
+    'rand',
+    'randint',
+    'randn',
+    'random',
+    'random_integers',
+    'random_sample',
+    'ranf',
+    'rayleigh',
+    'sample',
+    'seed',
+    'set_state',
+    'shuffle',
+    'standard_cauchy',
+    'standard_exponential',
+    'standard_gamma',
+    'standard_normal',
+    'standard_t',
+    'triangular',
+    'uniform',
+    'vonmises',
+    'wald',
+    'weibull',
+    'zipf',
 ]
 
+# add these for module-freeze analysis (like PyInstaller)
+from . import _bounded_integers, _common, _pickle
+from ._generator import Generator, default_rng
+from ._mt19937 import MT19937
+from ._pcg64 import PCG64, PCG64DXSM
+from ._philox import Philox
+from ._sfc64 import SFC64
+from .bit_generator import BitGenerator, SeedSequence
+from .mtrand import *
 
-def set_default_printstyle(style):
+__all__ += ['Generator', 'RandomState', 'SeedSequence', 'MT19937',
+            'Philox', 'PCG64', 'PCG64DXSM', 'SFC64', 'default_rng',
+            'BitGenerator']
+
+
+def __RandomState_ctor():
+    """Return a RandomState instance.
+
+    This function exists solely to assist (un)pickling.
+
+    Note that the state of the RandomState returned here is irrelevant, as this
+    function's entire purpose is to return a newly allocated RandomState whose
+    state pickle can set.  Consequently the RandomState returned by this function
+    is a freshly allocated copy with a seed=0.
+
+    See https://github.com/numpy/numpy/issues/4763 for a detailed discussion
+
     """
-    Set the default format for the string representation of polynomials.
-
-    Values for ``style`` must be valid inputs to ``__format__``, i.e. 'ascii'
-    or 'unicode'.
-
-    Parameters
-    ----------
-    style : str
-        Format string for default printing style. Must be either 'ascii' or
-        'unicode'.
-
-    Notes
-    -----
-    The default format depends on the platform: 'unicode' is used on
-    Unix-based systems and 'ascii' on Windows. This determination is based on
-    default font support for the unicode superscript and subscript ranges.
-
-    Examples
-    --------
-    >>> p = np.polynomial.Polynomial([1, 2, 3])
-    >>> c = np.polynomial.Chebyshev([1, 2, 3])
-    >>> np.polynomial.set_default_printstyle('unicode')
-    >>> print(p)
-    1.0 + 2.0·x + 3.0·x²
-    >>> print(c)
-    1.0 + 2.0·T₁(x) + 3.0·T₂(x)
-    >>> np.polynomial.set_default_printstyle('ascii')
-    >>> print(p)
-    1.0 + 2.0 x + 3.0 x**2
-    >>> print(c)
-    1.0 + 2.0 T_1(x) + 3.0 T_2(x)
-    >>> # Formatting supersedes all class/package-level defaults
-    >>> print(f"{p:unicode}")
-    1.0 + 2.0·x + 3.0·x²
-    """
-    if style not in ('unicode', 'ascii'):
-        raise ValueError(
-            f"Unsupported format string '{style}'. Valid options are 'ascii' "
-            f"and 'unicode'"
-        )
-    _use_unicode = True
-    if style == 'ascii':
-        _use_unicode = False
-    from ._polybase import ABCPolyBase
-    ABCPolyBase._use_unicode = _use_unicode
+    return RandomState(seed=0)
 
 
 from numpy._pytesttester import PytestTester

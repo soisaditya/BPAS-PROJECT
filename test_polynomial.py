@@ -1,325 +1,691 @@
+"""Tests for polynomial module.
+
+"""
+import pickle
+from copy import deepcopy
+from fractions import Fraction
+from functools import reduce
+
 import pytest
 
 import numpy as np
 import numpy.polynomial.polynomial as poly
 from numpy.testing import (
     assert_,
-    assert_allclose,
     assert_almost_equal,
-    assert_array_almost_equal,
     assert_array_equal,
     assert_equal,
     assert_raises,
+    assert_raises_regex,
 )
 
-# `poly1d` has some support for `np.bool` and `np.timedelta64`,
-# but it is limited and they are therefore excluded here
-TYPE_CODES = np.typecodes["AllInteger"] + np.typecodes["AllFloat"] + "O"
+
+def trim(x):
+    return poly.polytrim(x, tol=1e-6)
 
 
-class TestPolynomial:
-    def test_poly1d_str_and_repr(self):
-        p = np.poly1d([1., 2, 3])
-        assert_equal(repr(p), 'poly1d([1., 2., 3.])')
-        assert_equal(str(p),
-                     '   2\n'
-                     '1 x + 2 x + 3')
+T0 = [1]
+T1 = [0, 1]
+T2 = [-1, 0, 2]
+T3 = [0, -3, 0, 4]
+T4 = [1, 0, -8, 0, 8]
+T5 = [0, 5, 0, -20, 0, 16]
+T6 = [-1, 0, 18, 0, -48, 0, 32]
+T7 = [0, -7, 0, 56, 0, -112, 0, 64]
+T8 = [1, 0, -32, 0, 160, 0, -256, 0, 128]
+T9 = [0, 9, 0, -120, 0, 432, 0, -576, 0, 256]
 
-        q = np.poly1d([3., 2, 1])
-        assert_equal(repr(q), 'poly1d([3., 2., 1.])')
-        assert_equal(str(q),
-                     '   2\n'
-                     '3 x + 2 x + 1')
+Tlist = [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9]
 
-        r = np.poly1d([1.89999 + 2j, -3j, -5.12345678, 2 + 1j])
-        assert_equal(str(r),
-                     '            3      2\n'
-                     '(1.9 + 2j) x - 3j x - 5.123 x + (2 + 1j)')
 
-        assert_equal(str(np.poly1d([-3, -2, -1])),
-                     '    2\n'
-                     '-3 x - 2 x - 1')
+class TestConstants:
 
-    def test_poly1d_resolution(self):
-        p = np.poly1d([1., 2, 3])
-        q = np.poly1d([3., 2, 1])
-        assert_equal(p(0), 3.0)
-        assert_equal(p(5), 38.0)
-        assert_equal(q(0), 1.0)
-        assert_equal(q(5), 86.0)
+    def test_polydomain(self):
+        assert_equal(poly.polydomain, [-1, 1])
 
-    def test_poly1d_math(self):
-        # here we use some simple coeffs to make calculations easier
-        p = np.poly1d([1., 2, 4])
-        q = np.poly1d([4., 2, 1])
-        assert_equal(p / q, (np.poly1d([0.25]), np.poly1d([1.5, 3.75])))
-        assert_equal(p.integ(), np.poly1d([1 / 3, 1., 4., 0.]))
-        assert_equal(p.integ(1), np.poly1d([1 / 3, 1., 4., 0.]))
+    def test_polyzero(self):
+        assert_equal(poly.polyzero, [0])
 
-        p = np.poly1d([1., 2, 3])
-        q = np.poly1d([3., 2, 1])
-        assert_equal(p * q, np.poly1d([3., 8., 14., 8., 3.]))
-        assert_equal(p + q, np.poly1d([4., 4., 4.]))
-        assert_equal(p - q, np.poly1d([-2., 0., 2.]))
-        assert_equal(p ** 4, np.poly1d([1., 8., 36., 104., 214.,
-                                        312., 324., 216., 81.]))
-        assert_equal(p(q), np.poly1d([9., 12., 16., 8., 6.]))
-        assert_equal(q(p), np.poly1d([3., 12., 32., 40., 34.]))
-        assert_equal(p.deriv(), np.poly1d([2., 2.]))
-        assert_equal(p.deriv(2), np.poly1d([2.]))
-        assert_equal(np.polydiv(np.poly1d([1, 0, -1]), np.poly1d([1, 1])),
-                     (np.poly1d([1., -1.]), np.poly1d([0.])))
+    def test_polyone(self):
+        assert_equal(poly.polyone, [1])
 
-    @pytest.mark.parametrize("type_code", TYPE_CODES)
-    def test_poly1d_misc(self, type_code: str) -> None:
-        dtype = np.dtype(type_code)
-        ar = np.array([1, 2, 3], dtype=dtype)
-        p = np.poly1d(ar)
+    def test_polyx(self):
+        assert_equal(poly.polyx, [0, 1])
 
-        # `__eq__`
-        assert_equal(np.asarray(p), ar)
-        assert_equal(np.asarray(p).dtype, dtype)
-        assert_equal(len(p), 2)
+    def test_copy(self):
+        x = poly.Polynomial([1, 2, 3])
+        y = deepcopy(x)
+        assert_equal(x, y)
 
-        # `__getitem__`
-        comparison_dct = {-1: 0, 0: 3, 1: 2, 2: 1, 3: 0}
-        for index, ref in comparison_dct.items():
-            scalar = p[index]
-            assert_equal(scalar, ref)
-            if dtype == np.object_:
-                assert isinstance(scalar, int)
-            else:
-                assert_equal(scalar.dtype, dtype)
+    def test_pickle(self):
+        x = poly.Polynomial([1, 2, 3])
+        y = pickle.loads(pickle.dumps(x))
+        assert_equal(x, y)
 
-    def test_poly1d_variable_arg(self):
-        q = np.poly1d([1., 2, 3], variable='y')
-        assert_equal(str(q),
-                     '   2\n'
-                     '1 y + 2 y + 3')
-        q = np.poly1d([1., 2, 3], variable='lambda')
-        assert_equal(str(q),
-                     '        2\n'
-                     '1 lambda + 2 lambda + 3')
+class TestArithmetic:
 
-    def test_poly(self):
-        assert_array_almost_equal(np.poly([3, -np.sqrt(2), np.sqrt(2)]),
-                                  [1, -3, -2, 6])
+    def test_polyadd(self):
+        for i in range(5):
+            for j in range(5):
+                msg = f"At i={i}, j={j}"
+                tgt = np.zeros(max(i, j) + 1)
+                tgt[i] += 1
+                tgt[j] += 1
+                res = poly.polyadd([0] * i + [1], [0] * j + [1])
+                assert_equal(trim(res), trim(tgt), err_msg=msg)
 
-        # From matlab docs
-        A = [[1, 2, 3], [4, 5, 6], [7, 8, 0]]
-        assert_array_almost_equal(np.poly(A), [1, -6, -72, -27])
+    def test_polysub(self):
+        for i in range(5):
+            for j in range(5):
+                msg = f"At i={i}, j={j}"
+                tgt = np.zeros(max(i, j) + 1)
+                tgt[i] += 1
+                tgt[j] -= 1
+                res = poly.polysub([0] * i + [1], [0] * j + [1])
+                assert_equal(trim(res), trim(tgt), err_msg=msg)
 
-        # Should produce real output for perfect conjugates
-        assert_(np.isrealobj(np.poly([+1.082j, +2.613j, -2.613j, -1.082j])))
-        assert_(np.isrealobj(np.poly([0 + 1j, -0 + -1j, 1 + 2j,
-                                      1 - 2j, 1. + 3.5j, 1 - 3.5j])))
-        assert_(np.isrealobj(np.poly([1j, -1j, 1 + 2j, 1 - 2j, 1 + 3j, 1 - 3.j])))
-        assert_(np.isrealobj(np.poly([1j, -1j, 1 + 2j, 1 - 2j])))
-        assert_(np.isrealobj(np.poly([1j, -1j, 2j, -2j])))
-        assert_(np.isrealobj(np.poly([1j, -1j])))
-        assert_(np.isrealobj(np.poly([1, -1])))
+    def test_polymulx(self):
+        assert_equal(poly.polymulx([0]), [0])
+        assert_equal(poly.polymulx([1]), [0, 1])
+        for i in range(1, 5):
+            ser = [0] * i + [1]
+            tgt = [0] * (i + 1) + [1]
+            assert_equal(poly.polymulx(ser), tgt)
 
-        assert_(np.iscomplexobj(np.poly([1j, -1.0000001j])))
+    def test_polymul(self):
+        for i in range(5):
+            for j in range(5):
+                msg = f"At i={i}, j={j}"
+                tgt = np.zeros(i + j + 1)
+                tgt[i + j] += 1
+                res = poly.polymul([0] * i + [1], [0] * j + [1])
+                assert_equal(trim(res), trim(tgt), err_msg=msg)
 
-        np.random.seed(42)
-        a = np.random.randn(100) + 1j * np.random.randn(100)
-        assert_(np.isrealobj(np.poly(np.concatenate((a, np.conjugate(a))))))
+    def test_polydiv(self):
+        # check zero division
+        assert_raises(ZeroDivisionError, poly.polydiv, [1], [0])
 
-    def test_roots(self):
-        assert_array_equal(np.roots([1, 0, 0]), [0, 0])
+        # check scalar division
+        quo, rem = poly.polydiv([2], [2])
+        assert_equal((quo, rem), (1, 0))
+        quo, rem = poly.polydiv([2, 2], [2])
+        assert_equal((quo, rem), ((1, 1), 0))
+
+        # check rest.
+        for i in range(5):
+            for j in range(5):
+                msg = f"At i={i}, j={j}"
+                ci = [0] * i + [1, 2]
+                cj = [0] * j + [1, 2]
+                tgt = poly.polyadd(ci, cj)
+                quo, rem = poly.polydiv(tgt, ci)
+                res = poly.polyadd(poly.polymul(quo, ci), rem)
+                assert_equal(res, tgt, err_msg=msg)
+
+    def test_polypow(self):
+        for i in range(5):
+            for j in range(5):
+                msg = f"At i={i}, j={j}"
+                c = np.arange(i + 1)
+                tgt = reduce(poly.polymul, [c] * j, np.array([1]))
+                res = poly.polypow(c, j)
+                assert_equal(trim(res), trim(tgt), err_msg=msg)
+
+class TestFraction:
+
+    def test_Fraction(self):
+        # assert we can use Polynomials with coefficients of object dtype
+        f = Fraction(2, 3)
+        one = Fraction(1, 1)
+        zero = Fraction(0, 1)
+        p = poly.Polynomial([f, f], domain=[zero, one], window=[zero, one])
+
+        x = 2 * p + p ** 2
+        assert_equal(x.coef, np.array([Fraction(16, 9), Fraction(20, 9),
+                                       Fraction(4, 9)], dtype=object))
+        assert_equal(p.domain, [zero, one])
+        assert_equal(p.coef.dtype, np.dtypes.ObjectDType())
+        assert_(isinstance(p(f), Fraction))
+        assert_equal(p(f), Fraction(10, 9))
+        p_deriv = poly.Polynomial([Fraction(2, 3)], domain=[zero, one],
+                                  window=[zero, one])
+        assert_equal(p.deriv(), p_deriv)
+
+class TestEvaluation:
+    # coefficients of 1 + 2*x + 3*x**2
+    c1d = np.array([1., 2., 3.])
+    c2d = np.einsum('i,j->ij', c1d, c1d)
+    c3d = np.einsum('i,j,k->ijk', c1d, c1d, c1d)
+
+    # some random values in [-1, 1)
+    x = np.random.random((3, 5)) * 2 - 1
+    y = poly.polyval(x, [1., 2., 3.])
+
+    def test_polyval(self):
+        # check empty input
+        assert_equal(poly.polyval([], [1]).size, 0)
+
+        # check normal input)
+        x = np.linspace(-1, 1)
+        y = [x**i for i in range(5)]
+        for i in range(5):
+            tgt = y[i]
+            res = poly.polyval(x, [0] * i + [1])
+            assert_almost_equal(res, tgt)
+        tgt = x * (x**2 - 1)
+        res = poly.polyval(x, [0, -1, 0, 1])
+        assert_almost_equal(res, tgt)
+
+        # check that shape is preserved
+        for i in range(3):
+            dims = [2] * i
+            x = np.zeros(dims)
+            assert_equal(poly.polyval(x, [1]).shape, dims)
+            assert_equal(poly.polyval(x, [1, 0]).shape, dims)
+            assert_equal(poly.polyval(x, [1, 0, 0]).shape, dims)
+
+        # check masked arrays are processed correctly
+        mask = [False, True, False]
+        mx = np.ma.array([1, 2, 3], mask=mask)
+        res = np.polyval([7, 5, 3], mx)
+        assert_array_equal(res.mask, mask)
+
+        # check subtypes of ndarray are preserved
+        class C(np.ndarray):
+            pass
+
+        cx = np.array([1, 2, 3]).view(C)
+        assert_equal(type(np.polyval([2, 3, 4], cx)), C)
+
+    def test_polyvalfromroots(self):
+        # check exception for broadcasting x values over root array with
+        # too few dimensions
+        assert_raises(ValueError, poly.polyvalfromroots,
+                      [1], [1], tensor=False)
+
+        # check empty input
+        assert_equal(poly.polyvalfromroots([], [1]).size, 0)
+        assert_(poly.polyvalfromroots([], [1]).shape == (0,))
+
+        # check empty input + multidimensional roots
+        assert_equal(poly.polyvalfromroots([], [[1] * 5]).size, 0)
+        assert_(poly.polyvalfromroots([], [[1] * 5]).shape == (5, 0))
+
+        # check scalar input
+        assert_equal(poly.polyvalfromroots(1, 1), 0)
+        assert_(poly.polyvalfromroots(1, np.ones((3, 3))).shape == (3,))
+
+        # check normal input)
+        x = np.linspace(-1, 1)
+        y = [x**i for i in range(5)]
+        for i in range(1, 5):
+            tgt = y[i]
+            res = poly.polyvalfromroots(x, [0] * i)
+            assert_almost_equal(res, tgt)
+        tgt = x * (x - 1) * (x + 1)
+        res = poly.polyvalfromroots(x, [-1, 0, 1])
+        assert_almost_equal(res, tgt)
+
+        # check that shape is preserved
+        for i in range(3):
+            dims = [2] * i
+            x = np.zeros(dims)
+            assert_equal(poly.polyvalfromroots(x, [1]).shape, dims)
+            assert_equal(poly.polyvalfromroots(x, [1, 0]).shape, dims)
+            assert_equal(poly.polyvalfromroots(x, [1, 0, 0]).shape, dims)
+
+        # check compatibility with factorization
+        ptest = [15, 2, -16, -2, 1]
+        r = poly.polyroots(ptest)
+        x = np.linspace(-1, 1)
+        assert_almost_equal(poly.polyval(x, ptest),
+                            poly.polyvalfromroots(x, r))
+
+        # check multidimensional arrays of roots and values
+        # check tensor=False
+        rshape = (3, 5)
+        x = np.arange(-3, 2)
+        r = np.random.randint(-5, 5, size=rshape)
+        res = poly.polyvalfromroots(x, r, tensor=False)
+        tgt = np.empty(r.shape[1:])
+        for ii in range(tgt.size):
+            tgt[ii] = poly.polyvalfromroots(x[ii], r[:, ii])
+        assert_equal(res, tgt)
+
+        # check tensor=True
+        x = np.vstack([x, 2 * x])
+        res = poly.polyvalfromroots(x, r, tensor=True)
+        tgt = np.empty(r.shape[1:] + x.shape)
+        for ii in range(r.shape[1]):
+            for jj in range(x.shape[0]):
+                tgt[ii, jj, :] = poly.polyvalfromroots(x[jj], r[:, ii])
+        assert_equal(res, tgt)
+
+    def test_polyval2d(self):
+        x1, x2, x3 = self.x
+        y1, y2, y3 = self.y
+
+        # test exceptions
+        assert_raises_regex(ValueError, 'incompatible',
+                            poly.polyval2d, x1, x2[:2], self.c2d)
+
+        # test values
+        tgt = y1 * y2
+        res = poly.polyval2d(x1, x2, self.c2d)
+        assert_almost_equal(res, tgt)
+
+        # test shape
+        z = np.ones((2, 3))
+        res = poly.polyval2d(z, z, self.c2d)
+        assert_(res.shape == (2, 3))
+
+    def test_polyval3d(self):
+        x1, x2, x3 = self.x
+        y1, y2, y3 = self.y
+
+        # test exceptions
+        assert_raises_regex(ValueError, 'incompatible',
+                      poly.polyval3d, x1, x2, x3[:2], self.c3d)
+
+        # test values
+        tgt = y1 * y2 * y3
+        res = poly.polyval3d(x1, x2, x3, self.c3d)
+        assert_almost_equal(res, tgt)
+
+        # test shape
+        z = np.ones((2, 3))
+        res = poly.polyval3d(z, z, z, self.c3d)
+        assert_(res.shape == (2, 3))
+
+    def test_polygrid2d(self):
+        x1, x2, x3 = self.x
+        y1, y2, y3 = self.y
+
+        # test values
+        tgt = np.einsum('i,j->ij', y1, y2)
+        res = poly.polygrid2d(x1, x2, self.c2d)
+        assert_almost_equal(res, tgt)
+
+        # test shape
+        z = np.ones((2, 3))
+        res = poly.polygrid2d(z, z, self.c2d)
+        assert_(res.shape == (2, 3) * 2)
+
+    def test_polygrid3d(self):
+        x1, x2, x3 = self.x
+        y1, y2, y3 = self.y
+
+        # test values
+        tgt = np.einsum('i,j,k->ijk', y1, y2, y3)
+        res = poly.polygrid3d(x1, x2, x3, self.c3d)
+        assert_almost_equal(res, tgt)
+
+        # test shape
+        z = np.ones((2, 3))
+        res = poly.polygrid3d(z, z, z, self.c3d)
+        assert_(res.shape == (2, 3) * 3)
+
+
+class TestIntegral:
+
+    def test_polyint(self):
+        # check exceptions
+        assert_raises(TypeError, poly.polyint, [0], .5)
+        assert_raises(ValueError, poly.polyint, [0], -1)
+        assert_raises(ValueError, poly.polyint, [0], 1, [0, 0])
+        assert_raises(ValueError, poly.polyint, [0], lbnd=[0])
+        assert_raises(ValueError, poly.polyint, [0], scl=[0])
+        assert_raises(TypeError, poly.polyint, [0], axis=.5)
+        assert_raises(TypeError, poly.polyint, [1, 1], 1.)
+
+        # test integration of zero polynomial
+        for i in range(2, 5):
+            k = [0] * (i - 2) + [1]
+            res = poly.polyint([0], m=i, k=k)
+            assert_almost_equal(res, [0, 1])
+
+        # check single integration with integration constant
+        for i in range(5):
+            scl = i + 1
+            pol = [0] * i + [1]
+            tgt = [i] + [0] * i + [1 / scl]
+            res = poly.polyint(pol, m=1, k=[i])
+            assert_almost_equal(trim(res), trim(tgt))
+
+        # check single integration with integration constant and lbnd
+        for i in range(5):
+            scl = i + 1
+            pol = [0] * i + [1]
+            res = poly.polyint(pol, m=1, k=[i], lbnd=-1)
+            assert_almost_equal(poly.polyval(-1, res), i)
+
+        # check single integration with integration constant and scaling
+        for i in range(5):
+            scl = i + 1
+            pol = [0] * i + [1]
+            tgt = [i] + [0] * i + [2 / scl]
+            res = poly.polyint(pol, m=1, k=[i], scl=2)
+            assert_almost_equal(trim(res), trim(tgt))
+
+        # check multiple integrations with default k
+        for i in range(5):
+            for j in range(2, 5):
+                pol = [0] * i + [1]
+                tgt = pol[:]
+                for k in range(j):
+                    tgt = poly.polyint(tgt, m=1)
+                res = poly.polyint(pol, m=j)
+                assert_almost_equal(trim(res), trim(tgt))
+
+        # check multiple integrations with defined k
+        for i in range(5):
+            for j in range(2, 5):
+                pol = [0] * i + [1]
+                tgt = pol[:]
+                for k in range(j):
+                    tgt = poly.polyint(tgt, m=1, k=[k])
+                res = poly.polyint(pol, m=j, k=list(range(j)))
+                assert_almost_equal(trim(res), trim(tgt))
+
+        # check multiple integrations with lbnd
+        for i in range(5):
+            for j in range(2, 5):
+                pol = [0] * i + [1]
+                tgt = pol[:]
+                for k in range(j):
+                    tgt = poly.polyint(tgt, m=1, k=[k], lbnd=-1)
+                res = poly.polyint(pol, m=j, k=list(range(j)), lbnd=-1)
+                assert_almost_equal(trim(res), trim(tgt))
+
+        # check multiple integrations with scaling
+        for i in range(5):
+            for j in range(2, 5):
+                pol = [0] * i + [1]
+                tgt = pol[:]
+                for k in range(j):
+                    tgt = poly.polyint(tgt, m=1, k=[k], scl=2)
+                res = poly.polyint(pol, m=j, k=list(range(j)), scl=2)
+                assert_almost_equal(trim(res), trim(tgt))
+
+    def test_polyint_axis(self):
+        # check that axis keyword works
+        c2d = np.random.random((3, 4))
+
+        tgt = np.vstack([poly.polyint(c) for c in c2d.T]).T
+        res = poly.polyint(c2d, axis=0)
+        assert_almost_equal(res, tgt)
+
+        tgt = np.vstack([poly.polyint(c) for c in c2d])
+        res = poly.polyint(c2d, axis=1)
+        assert_almost_equal(res, tgt)
+
+        tgt = np.vstack([poly.polyint(c, k=3) for c in c2d])
+        res = poly.polyint(c2d, k=3, axis=1)
+        assert_almost_equal(res, tgt)
+
+
+class TestDerivative:
+
+    def test_polyder(self):
+        # check exceptions
+        assert_raises(TypeError, poly.polyder, [0], .5)
+        assert_raises(ValueError, poly.polyder, [0], -1)
+
+        # check that zeroth derivative does nothing
+        for i in range(5):
+            tgt = [0] * i + [1]
+            res = poly.polyder(tgt, m=0)
+            assert_equal(trim(res), trim(tgt))
+
+        # check that derivation is the inverse of integration
+        for i in range(5):
+            for j in range(2, 5):
+                tgt = [0] * i + [1]
+                res = poly.polyder(poly.polyint(tgt, m=j), m=j)
+                assert_almost_equal(trim(res), trim(tgt))
+
+        # check derivation with scaling
+        for i in range(5):
+            for j in range(2, 5):
+                tgt = [0] * i + [1]
+                res = poly.polyder(poly.polyint(tgt, m=j, scl=2), m=j, scl=.5)
+                assert_almost_equal(trim(res), trim(tgt))
+
+    def test_polyder_axis(self):
+        # check that axis keyword works
+        c2d = np.random.random((3, 4))
+
+        tgt = np.vstack([poly.polyder(c) for c in c2d.T]).T
+        res = poly.polyder(c2d, axis=0)
+        assert_almost_equal(res, tgt)
+
+        tgt = np.vstack([poly.polyder(c) for c in c2d])
+        res = poly.polyder(c2d, axis=1)
+        assert_almost_equal(res, tgt)
+
+
+class TestVander:
+    # some random values in [-1, 1)
+    x = np.random.random((3, 5)) * 2 - 1
+
+    def test_polyvander(self):
+        # check for 1d x
+        x = np.arange(3)
+        v = poly.polyvander(x, 3)
+        assert_(v.shape == (3, 4))
+        for i in range(4):
+            coef = [0] * i + [1]
+            assert_almost_equal(v[..., i], poly.polyval(x, coef))
+
+        # check for 2d x
+        x = np.array([[1, 2], [3, 4], [5, 6]])
+        v = poly.polyvander(x, 3)
+        assert_(v.shape == (3, 2, 4))
+        for i in range(4):
+            coef = [0] * i + [1]
+            assert_almost_equal(v[..., i], poly.polyval(x, coef))
+
+    def test_polyvander2d(self):
+        # also tests polyval2d for non-square coefficient array
+        x1, x2, x3 = self.x
+        c = np.random.random((2, 3))
+        van = poly.polyvander2d(x1, x2, [1, 2])
+        tgt = poly.polyval2d(x1, x2, c)
+        res = np.dot(van, c.flat)
+        assert_almost_equal(res, tgt)
+
+        # check shape
+        van = poly.polyvander2d([x1], [x2], [1, 2])
+        assert_(van.shape == (1, 5, 6))
+
+    def test_polyvander3d(self):
+        # also tests polyval3d for non-square coefficient array
+        x1, x2, x3 = self.x
+        c = np.random.random((2, 3, 4))
+        van = poly.polyvander3d(x1, x2, x3, [1, 2, 3])
+        tgt = poly.polyval3d(x1, x2, x3, c)
+        res = np.dot(van, c.flat)
+        assert_almost_equal(res, tgt)
+
+        # check shape
+        van = poly.polyvander3d([x1], [x2], [x3], [1, 2, 3])
+        assert_(van.shape == (1, 5, 24))
+
+    def test_polyvandernegdeg(self):
+        x = np.arange(3)
+        assert_raises(ValueError, poly.polyvander, x, -1)
+
+
+class TestCompanion:
+
+    def test_raises(self):
+        assert_raises(ValueError, poly.polycompanion, [])
+        assert_raises(ValueError, poly.polycompanion, [1])
+
+    def test_dimensions(self):
+        for i in range(1, 5):
+            coef = [0] * i + [1]
+            assert_(poly.polycompanion(coef).shape == (i, i))
+
+    def test_linear_root(self):
+        assert_(poly.polycompanion([1, 2])[0, 0] == -.5)
+
+
+class TestMisc:
+
+    def test_polyfromroots(self):
+        res = poly.polyfromroots([])
+        assert_almost_equal(trim(res), [1])
+        for i in range(1, 5):
+            roots = np.cos(np.linspace(-np.pi, 0, 2 * i + 1)[1::2])
+            tgt = Tlist[i]
+            res = poly.polyfromroots(roots) * 2**(i - 1)
+            assert_almost_equal(trim(res), trim(tgt))
+
+    def test_polyroots(self):
+        assert_almost_equal(poly.polyroots([1]), [])
+        assert_almost_equal(poly.polyroots([1, 2]), [-.5])
+        for i in range(2, 5):
+            tgt = np.linspace(-1, 1, i)
+            res = poly.polyroots(poly.polyfromroots(tgt))
+            assert_almost_equal(trim(res), trim(tgt))
 
         # Testing for larger root values
         for i in np.logspace(10, 25, num=1000, base=10):
             tgt = np.array([-1, 1, i])
-            res = np.sort(np.roots(poly.polyfromroots(tgt)[::-1]))
+            res = poly.polyroots(poly.polyfromroots(tgt))
             # Adapting the expected precision according to the root value,
-            # to take into account numerical calculation error
-            assert_almost_equal(res, tgt, 14 - int(np.log10(i)))
-
+            # to take into account numerical calculation error.
+            assert_almost_equal(res, tgt, 15 - int(np.log10(i)))
         for i in np.logspace(10, 25, num=1000, base=10):
             tgt = np.array([-1, 1.01, i])
-            res = np.sort(np.roots(poly.polyfromroots(tgt)[::-1]))
+            res = poly.polyroots(poly.polyfromroots(tgt))
             # Adapting the expected precision according to the root value,
-            # to take into account numerical calculation error
+            # to take into account numerical calculation error.
             assert_almost_equal(res, tgt, 14 - int(np.log10(i)))
 
-    def test_str_leading_zeros(self):
-        p = np.poly1d([4, 3, 2, 1])
-        p[3] = 0
-        assert_equal(str(p),
-                     "   2\n"
-                     "3 x + 2 x + 1")
-
-        p = np.poly1d([1, 2])
-        p[0] = 0
-        p[1] = 0
-        assert_equal(str(p), " \n0")
-
     def test_polyfit(self):
-        c = np.array([3., 2., 1.])
-        x = np.linspace(0, 2, 7)
-        y = np.polyval(c, x)
-        err = [1, -1, 1, -1, 1, -1, 1]
-        weights = np.arange(8, 1, -1)**2 / 7.0
+        def f(x):
+            return x * (x - 1) * (x - 2)
 
-        # Check exception when too few points for variance estimate. Note that
-        # the estimate requires the number of data points to exceed
-        # degree + 1
-        assert_raises(ValueError, np.polyfit,
-                      [1], [1], deg=0, cov=True)
+        def f2(x):
+            return x**4 + x**2 + 1
 
-        # check 1D case
-        m, cov = np.polyfit(x, y + err, 2, cov=True)
-        est = [3.8571, 0.2857, 1.619]
-        assert_almost_equal(est, m, decimal=4)
-        val0 = [[ 1.4694, -2.9388,  0.8163],
-                [-2.9388,  6.3673, -2.1224],
-                [ 0.8163, -2.1224,  1.161 ]]  # noqa: E202
-        assert_almost_equal(val0, cov, decimal=4)
+        # Test exceptions
+        assert_raises(ValueError, poly.polyfit, [1], [1], -1)
+        assert_raises(TypeError, poly.polyfit, [[1]], [1], 0)
+        assert_raises(TypeError, poly.polyfit, [], [1], 0)
+        assert_raises(TypeError, poly.polyfit, [1], [[[1]]], 0)
+        assert_raises(TypeError, poly.polyfit, [1, 2], [1], 0)
+        assert_raises(TypeError, poly.polyfit, [1], [1, 2], 0)
+        assert_raises(TypeError, poly.polyfit, [1], [1], 0, w=[[1]])
+        assert_raises(TypeError, poly.polyfit, [1], [1], 0, w=[1, 1])
+        assert_raises(ValueError, poly.polyfit, [1], [1], [-1,])
+        assert_raises(ValueError, poly.polyfit, [1], [1], [2, -1, 6])
+        assert_raises(TypeError, poly.polyfit, [1], [1], [])
 
-        m2, cov2 = np.polyfit(x, y + err, 2, w=weights, cov=True)
-        assert_almost_equal([4.8927, -1.0177, 1.7768], m2, decimal=4)
-        val = [[ 4.3964, -5.0052,  0.4878],
-               [-5.0052,  6.8067, -0.9089],
-               [ 0.4878, -0.9089,  0.3337]]
-        assert_almost_equal(val, cov2, decimal=4)
+        # Test fit
+        x = np.linspace(0, 2)
+        y = f(x)
+        #
+        coef3 = poly.polyfit(x, y, 3)
+        assert_equal(len(coef3), 4)
+        assert_almost_equal(poly.polyval(x, coef3), y)
+        coef3 = poly.polyfit(x, y, [0, 1, 2, 3])
+        assert_equal(len(coef3), 4)
+        assert_almost_equal(poly.polyval(x, coef3), y)
+        #
+        coef4 = poly.polyfit(x, y, 4)
+        assert_equal(len(coef4), 5)
+        assert_almost_equal(poly.polyval(x, coef4), y)
+        coef4 = poly.polyfit(x, y, [0, 1, 2, 3, 4])
+        assert_equal(len(coef4), 5)
+        assert_almost_equal(poly.polyval(x, coef4), y)
+        #
+        coef2d = poly.polyfit(x, np.array([y, y]).T, 3)
+        assert_almost_equal(coef2d, np.array([coef3, coef3]).T)
+        coef2d = poly.polyfit(x, np.array([y, y]).T, [0, 1, 2, 3])
+        assert_almost_equal(coef2d, np.array([coef3, coef3]).T)
+        # test weighting
+        w = np.zeros_like(x)
+        yw = y.copy()
+        w[1::2] = 1
+        yw[0::2] = 0
+        wcoef3 = poly.polyfit(x, yw, 3, w=w)
+        assert_almost_equal(wcoef3, coef3)
+        wcoef3 = poly.polyfit(x, yw, [0, 1, 2, 3], w=w)
+        assert_almost_equal(wcoef3, coef3)
+        #
+        wcoef2d = poly.polyfit(x, np.array([yw, yw]).T, 3, w=w)
+        assert_almost_equal(wcoef2d, np.array([coef3, coef3]).T)
+        wcoef2d = poly.polyfit(x, np.array([yw, yw]).T, [0, 1, 2, 3], w=w)
+        assert_almost_equal(wcoef2d, np.array([coef3, coef3]).T)
+        # test scaling with complex values x points whose square
+        # is zero when summed.
+        x = [1, 1j, -1, -1j]
+        assert_almost_equal(poly.polyfit(x, x, 1), [0, 1])
+        assert_almost_equal(poly.polyfit(x, x, [0, 1]), [0, 1])
+        # test fitting only even Polyendre polynomials
+        x = np.linspace(-1, 1)
+        y = f2(x)
+        coef1 = poly.polyfit(x, y, 4)
+        assert_almost_equal(poly.polyval(x, coef1), y)
+        coef2 = poly.polyfit(x, y, [0, 2, 4])
+        assert_almost_equal(poly.polyval(x, coef2), y)
+        assert_almost_equal(coef1, coef2)
 
-        m3, cov3 = np.polyfit(x, y + err, 2, w=weights, cov="unscaled")
-        assert_almost_equal([4.8927, -1.0177, 1.7768], m3, decimal=4)
-        val = [[ 0.1473, -0.1677,  0.0163],
-               [-0.1677,  0.228 , -0.0304],  # noqa: E203
-               [ 0.0163, -0.0304,  0.0112]]
-        assert_almost_equal(val, cov3, decimal=4)
+    def test_polytrim(self):
+        coef = [2, -1, 1, 0]
 
-        # check 2D (n,1) case
-        y = y[:, np.newaxis]
-        c = c[:, np.newaxis]
-        assert_almost_equal(c, np.polyfit(x, y, 2))
-        # check 2D (n,2) case
-        yy = np.concatenate((y, y), axis=1)
-        cc = np.concatenate((c, c), axis=1)
-        assert_almost_equal(cc, np.polyfit(x, yy, 2))
+        # Test exceptions
+        assert_raises(ValueError, poly.polytrim, coef, -1)
 
-        m, cov = np.polyfit(x, yy + np.array(err)[:, np.newaxis], 2, cov=True)
-        assert_almost_equal(est, m[:, 0], decimal=4)
-        assert_almost_equal(est, m[:, 1], decimal=4)
-        assert_almost_equal(val0, cov[:, :, 0], decimal=4)
-        assert_almost_equal(val0, cov[:, :, 1], decimal=4)
+        # Test results
+        assert_equal(poly.polytrim(coef), coef[:-1])
+        assert_equal(poly.polytrim(coef, 1), coef[:-3])
+        assert_equal(poly.polytrim(coef, 2), [0])
 
-        # check order 1 (deg=0) case, were the analytic results are simple
-        np.random.seed(123)
-        y = np.random.normal(size=(4, 10000))
-        mean, cov = np.polyfit(np.zeros(y.shape[0]), y, deg=0, cov=True)
-        # Should get sigma_mean = sigma/sqrt(N) = 1./sqrt(4) = 0.5.
-        assert_allclose(mean.std(), 0.5, atol=0.01)
-        assert_allclose(np.sqrt(cov.mean()), 0.5, atol=0.01)
-        # Without scaling, since reduced chi2 is 1, the result should be the same.
-        mean, cov = np.polyfit(np.zeros(y.shape[0]), y, w=np.ones(y.shape[0]),
-                               deg=0, cov="unscaled")
-        assert_allclose(mean.std(), 0.5, atol=0.01)
-        assert_almost_equal(np.sqrt(cov.mean()), 0.5)
-        # If we estimate our errors wrong, no change with scaling:
-        w = np.full(y.shape[0], 1. / 0.5)
-        mean, cov = np.polyfit(np.zeros(y.shape[0]), y, w=w, deg=0, cov=True)
-        assert_allclose(mean.std(), 0.5, atol=0.01)
-        assert_allclose(np.sqrt(cov.mean()), 0.5, atol=0.01)
-        # But if we do not scale, our estimate for the error in the mean will
-        # differ.
-        mean, cov = np.polyfit(np.zeros(y.shape[0]), y, w=w, deg=0, cov="unscaled")
-        assert_allclose(mean.std(), 0.5, atol=0.01)
-        assert_almost_equal(np.sqrt(cov.mean()), 0.25)
+    def test_polyline(self):
+        assert_equal(poly.polyline(3, 4), [3, 4])
 
-    def test_objects(self):
-        from decimal import Decimal
-        p = np.poly1d([Decimal('4.0'), Decimal('3.0'), Decimal('2.0')])
-        p2 = p * Decimal('1.333333333333333')
-        assert_(p2[1] == Decimal("3.9999999999999990"))
-        p2 = p.deriv()
-        assert_(p2[1] == Decimal('8.0'))
-        p2 = p.integ()
-        assert_(p2[3] == Decimal("1.333333333333333333333333333"))
-        assert_(p2[2] == Decimal('1.5'))
-        assert_(np.issubdtype(p2.coeffs.dtype, np.object_))
-        p = np.poly([Decimal(1), Decimal(2)])
-        assert_equal(np.poly([Decimal(1), Decimal(2)]),
-                     [1, Decimal(-3), Decimal(2)])
+    def test_polyline_zero(self):
+        assert_equal(poly.polyline(3, 0), [3])
 
-    def test_complex(self):
-        p = np.poly1d([3j, 2j, 1j])
-        p2 = p.integ()
-        assert_((p2.coeffs == [1j, 1j, 1j, 0]).all())
-        p2 = p.deriv()
-        assert_((p2.coeffs == [6j, 2j]).all())
+    def test_fit_degenerate_domain(self):
+        p = poly.Polynomial.fit([1], [2], deg=0)
+        assert_equal(p.coef, [2.])
+        p = poly.Polynomial.fit([1, 1], [2, 2.1], deg=0)
+        assert_almost_equal(p.coef, [2.05])
+        with pytest.warns(np.exceptions.RankWarning):
+            p = poly.Polynomial.fit([1, 1], [2, 2.1], deg=1)
 
-    def test_integ_coeffs(self):
-        p = np.poly1d([3, 2, 1])
-        p2 = p.integ(3, k=[9, 7, 6])
-        expected = [1 / 4 / 5, 1 / 3 / 4, 1 / 2 / 3, 9 / 1 / 2, 7, 6]
-        assert_((p2.coeffs == expected).all())
+    def test_result_type(self):
+        w = np.array([-1, 1], dtype=np.float32)
+        p = np.polynomial.Polynomial(w, domain=w, window=w)
+        v = p(2)
+        assert_equal(v.dtype, np.float32)
 
-    def test_zero_dims(self):
-        try:
-            np.poly(np.zeros((0, 0)))
-        except ValueError:
-            pass
+        arr = np.polydiv(1, np.float32(1))
+        assert_equal(arr[0].dtype, np.float64)
 
-    def test_poly_int_overflow(self):
-        """
-        Regression test for gh-5096.
-        """
-        v = np.arange(1, 21)
-        assert_almost_equal(np.poly(v), np.poly(np.diag(v)))
+class ArrayFunctionInterceptor:
+    def __init__(self):
+        self.called = False
 
-    def test_zero_poly_dtype(self):
-        """
-        Regression test for gh-16354.
-        """
-        z = np.array([0, 0, 0])
-        p = np.poly1d(z.astype(np.int64))
-        assert_equal(p.coeffs.dtype, np.int64)
+    def __array_function__(self, func, types, args, kwargs):
+        self.called = True
+        return "intercepted"
 
-        p = np.poly1d(z.astype(np.float32))
-        assert_equal(p.coeffs.dtype, np.float32)
+def test_polyval2d_array_function_hook():
+    x = ArrayFunctionInterceptor()
+    y = ArrayFunctionInterceptor()
+    c = ArrayFunctionInterceptor()
+    result = np.polynomial.polynomial.polyval2d(x, y, c)
+    assert result == "intercepted"
 
-        p = np.poly1d(z.astype(np.complex64))
-        assert_equal(p.coeffs.dtype, np.complex64)
-
-    def test_poly_eq(self):
-        p = np.poly1d([1, 2, 3])
-        p2 = np.poly1d([1, 2, 4])
-        assert_equal(p == None, False)  # noqa: E711
-        assert_equal(p != None, True)  # noqa: E711
-        assert_equal(p == p, True)
-        assert_equal(p == p2, False)
-        assert_equal(p != p2, True)
-
-    def test_polydiv(self):
-        b = np.poly1d([2, 6, 6, 1])
-        a = np.poly1d([-1j, (1 + 2j), -(2 + 1j), 1])
-        q, r = np.polydiv(b, a)
-        assert_equal(q.coeffs.dtype, np.complex128)
-        assert_equal(r.coeffs.dtype, np.complex128)
-        assert_equal(q * a + r, b)
-
-        c = [1, 2, 3]
-        d = np.poly1d([1, 2, 3])
-        s, t = np.polydiv(c, d)
-        assert isinstance(s, np.poly1d)
-        assert isinstance(t, np.poly1d)
-        u, v = np.polydiv(d, c)
-        assert isinstance(u, np.poly1d)
-        assert isinstance(v, np.poly1d)
-
-    def test_poly_coeffs_mutable(self):
-        """ Coefficients should be modifiable """
-        p = np.poly1d([1, 2, 3])
-
-        p.coeffs += 1
-        assert_equal(p.coeffs, [2, 3, 4])
-
-        p.coeffs[2] += 10
-        assert_equal(p.coeffs, [2, 3, 14])
-
-        # this never used to be allowed - let's not add features to deprecated
-        # APIs
-        assert_raises(AttributeError, setattr, p, 'coeffs', np.array(1))
+def test_polygrid2d_array_function_hook():
+    x = ArrayFunctionInterceptor()
+    y = ArrayFunctionInterceptor()
+    c = ArrayFunctionInterceptor()
+    result = np.polynomial.polynomial.polygrid2d(x, y, c)
+    assert result == "intercepted"
