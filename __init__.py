@@ -1,4 +1,3 @@
-# Copyright (c) 2010-2024 openpyxl
-
-
-from .comments import Comment
+"""
+Stuff related to Office OpenXML packaging: relationships, archive, content types.
+"""

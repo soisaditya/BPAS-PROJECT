@@ -1,301 +1,114 @@
-from __future__ import annotations
+# Copyright (c) 2010-2024 openpyxl
 
-import collections.abc as cabc
-from contextlib import contextmanager
-from gettext import gettext as _
+from collections import OrderedDict
 
-from ._compat import term_len
-from .parser import _split_opt
+from openpyxl.descriptors import (
+    Bool,
+    Sequence,
+    Alias,
+    Convertible,
+)
+from openpyxl.descriptors.serialisable import Serialisable
 
-# Can force a width.  This is used by the test system
-FORCED_WIDTH: int | None = None
+from .rule import Rule
 
+from openpyxl.worksheet.cell_range import MultiCellRange
 
-def measure_table(rows: cabc.Iterable[tuple[str, str]]) -> tuple[int, ...]:
-    widths: dict[int, int] = {}
+class ConditionalFormatting(Serialisable):
 
-    for row in rows:
-        for idx, col in enumerate(row):
-            widths[idx] = max(widths.get(idx, 0), term_len(col))
+    tagname = "conditionalFormatting"
 
-    return tuple(y for x, y in sorted(widths.items()))
-
-
-def iter_rows(
-    rows: cabc.Iterable[tuple[str, str]], col_count: int
-) -> cabc.Iterator[tuple[str, ...]]:
-    for row in rows:
-        yield row + ("",) * (col_count - len(row))
+    sqref = Convertible(expected_type=MultiCellRange)
+    cells = Alias("sqref")
+    pivot = Bool(allow_none=True)
+    cfRule = Sequence(expected_type=Rule)
+    rules = Alias("cfRule")
 
 
-def wrap_text(
-    text: str,
-    width: int = 78,
-    initial_indent: str = "",
-    subsequent_indent: str = "",
-    preserve_paragraphs: bool = False,
-) -> str:
-    """A helper function that intelligently wraps text.  By default, it
-    assumes that it operates on a single paragraph of text but if the
-    `preserve_paragraphs` parameter is provided it will intelligently
-    handle paragraphs (defined by two empty lines).
-
-    If paragraphs are handled, a paragraph can be prefixed with an empty
-    line containing the ``\\b`` character (``\\x08``) to indicate that
-    no rewrapping should happen in that block.
-
-    :param text: the text that should be rewrapped.
-    :param width: the maximum width for the text.
-    :param initial_indent: the initial indent that should be placed on the
-                           first line as a string.
-    :param subsequent_indent: the indent string that should be placed on
-                              each consecutive line.
-    :param preserve_paragraphs: if this flag is set then the wrapping will
-                                intelligently handle paragraphs.
-    """
-    from ._textwrap import TextWrapper
-
-    text = text.expandtabs()
-    wrapper = TextWrapper(
-        width,
-        initial_indent=initial_indent,
-        subsequent_indent=subsequent_indent,
-        replace_whitespace=False,
-    )
-    if not preserve_paragraphs:
-        return wrapper.fill(text)
-
-    p: list[tuple[int, bool, str]] = []
-    buf: list[str] = []
-    indent = None
-
-    def _flush_par() -> None:
-        if not buf:
-            return
-        if buf[0].strip() == "\b":
-            p.append((indent or 0, True, "\n".join(buf[1:])))
-        else:
-            p.append((indent or 0, False, " ".join(buf)))
-        del buf[:]
-
-    for line in text.splitlines():
-        if not line:
-            _flush_par()
-            indent = None
-        else:
-            if indent is None:
-                orig_len = term_len(line)
-                line = line.lstrip()
-                indent = orig_len - term_len(line)
-            buf.append(line)
-    _flush_par()
-
-    rv = []
-    for indent, raw, text in p:
-        with wrapper.extra_indent(" " * indent):
-            if raw:
-                rv.append(wrapper.indent_only(text))
-            else:
-                rv.append(wrapper.fill(text))
-
-    return "\n\n".join(rv)
+    def __init__(self, sqref=(), pivot=None, cfRule=(), extLst=None):
+        self.sqref = sqref
+        self.pivot = pivot
+        self.cfRule = cfRule
 
 
-class HelpFormatter:
-    """This class helps with formatting text-based help pages.  It's
-    usually just needed for very special internal cases, but it's also
-    exposed so that developers can write their own fancy outputs.
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.sqref == other.sqref
 
-    At present, it always writes into memory.
 
-    :param indent_increment: the additional increment for each level.
-    :param width: the width for the text.  This defaults to the terminal
-                  width clamped to a maximum of 78.
-    """
+    def __hash__(self):
+        return hash(self.sqref)
 
-    def __init__(
-        self,
-        indent_increment: int = 2,
-        width: int | None = None,
-        max_width: int | None = None,
-    ) -> None:
-        self.indent_increment = indent_increment
-        if max_width is None:
-            max_width = 80
-        if width is None:
-            import shutil
 
-            width = FORCED_WIDTH
-            if width is None:
-                width = max(min(shutil.get_terminal_size().columns, max_width) - 2, 50)
-        self.width = width
-        self.current_indent: int = 0
-        self.buffer: list[str] = []
+    def __repr__(self):
+        return "<{cls} {cells}>".format(cls=self.__class__.__name__, cells=self.sqref)
 
-    def write(self, string: str) -> None:
-        """Writes a unicode string into the internal buffer."""
-        self.buffer.append(string)
 
-    def indent(self) -> None:
-        """Increases the indentation."""
-        self.current_indent += self.indent_increment
-
-    def dedent(self) -> None:
-        """Decreases the indentation."""
-        self.current_indent -= self.indent_increment
-
-    def write_usage(self, prog: str, args: str = "", prefix: str | None = None) -> None:
-        """Writes a usage line into the buffer.
-
-        :param prog: the program name.
-        :param args: whitespace separated list of arguments.
-        :param prefix: The prefix for the first line. Defaults to
-            ``"Usage: "``.
+    def __contains__(self, coord):
         """
-        if prefix is None:
-            prefix = f"{_('Usage:')} "
-
-        usage_prefix = f"{prefix:>{self.current_indent}}{prog} "
-        text_width = self.width - self.current_indent
-
-        if text_width >= (term_len(usage_prefix) + 20):
-            # The arguments will fit to the right of the prefix.
-            indent = " " * term_len(usage_prefix)
-            self.write(
-                wrap_text(
-                    args,
-                    text_width,
-                    initial_indent=usage_prefix,
-                    subsequent_indent=indent,
-                )
-            )
-        else:
-            # The prefix is too long, put the arguments on the next line.
-            self.write(usage_prefix)
-            self.write("\n")
-            indent = " " * (max(self.current_indent, term_len(prefix)) + 4)
-            self.write(
-                wrap_text(
-                    args, text_width, initial_indent=indent, subsequent_indent=indent
-                )
-            )
-
-        self.write("\n")
-
-    def write_heading(self, heading: str) -> None:
-        """Writes a heading into the buffer."""
-        self.write(f"{'':>{self.current_indent}}{heading}:\n")
-
-    def write_paragraph(self) -> None:
-        """Writes a paragraph into the buffer."""
-        if self.buffer:
-            self.write("\n")
-
-    def write_text(self, text: str) -> None:
-        """Writes re-indented text into the buffer.  This rewraps and
-        preserves paragraphs.
+        Check whether a certain cell is affected by the formatting
         """
-        indent = " " * self.current_indent
-        self.write(
-            wrap_text(
-                text,
-                self.width,
-                initial_indent=indent,
-                subsequent_indent=indent,
-                preserve_paragraphs=True,
-            )
-        )
-        self.write("\n")
+        return coord in self.sqref
 
-    def write_dl(
-        self,
-        rows: cabc.Sequence[tuple[str, str]],
-        col_max: int = 30,
-        col_spacing: int = 2,
-    ) -> None:
-        """Writes a definition list into the buffer.  This is how options
-        and commands are usually formatted.
 
-        :param rows: a list of two item tuples for the terms and values.
-        :param col_max: the maximum width of the first column.
-        :param col_spacing: the number of spaces between the first and
-                            second column.
+class ConditionalFormattingList:
+    """Conditional formatting rules."""
+
+
+    def __init__(self):
+        self._cf_rules = OrderedDict()
+        self.max_priority = 0
+
+
+    def add(self, range_string, cfRule):
+        """Add a rule such as ColorScaleRule, FormulaRule or CellIsRule
+
+         The priority will be added automatically.
         """
-        rows = list(rows)
-        widths = measure_table(rows)
-        if len(widths) != 2:
-            raise TypeError("Expected two columns for definition list")
+        cf = range_string
+        if isinstance(range_string, str):
+            cf = ConditionalFormatting(range_string)
+        if not isinstance(cfRule, Rule):
+            raise ValueError("Only instances of openpyxl.formatting.rule.Rule may be added")
+        rule = cfRule
+        self.max_priority += 1
+        if not rule.priority:
+            rule.priority = self.max_priority
 
-        first_col = min(widths[0], col_max) + col_spacing
+        self._cf_rules.setdefault(cf, []).append(rule)
 
-        for first, second in iter_rows(rows, len(widths)):
-            self.write(f"{'':>{self.current_indent}}{first}")
-            if not second:
-                self.write("\n")
-                continue
-            if term_len(first) <= first_col - col_spacing:
-                self.write(" " * (first_col - term_len(first)))
-            else:
-                self.write("\n")
-                self.write(" " * (first_col + self.current_indent))
 
-            text_width = max(self.width - first_col - 2, 10)
-            wrapped_text = wrap_text(second, text_width, preserve_paragraphs=True)
-            lines = wrapped_text.splitlines()
+    def __bool__(self):
+        return bool(self._cf_rules)
 
-            if lines:
-                self.write(f"{lines[0]}\n")
 
-                for line in lines[1:]:
-                    self.write(f"{'':>{first_col + self.current_indent}}{line}\n")
-            else:
-                self.write("\n")
+    def __len__(self):
+        return len(self._cf_rules)
 
-    @contextmanager
-    def section(self, name: str) -> cabc.Iterator[None]:
-        """Helpful context manager that writes a paragraph, a heading,
-        and the indents.
 
-        :param name: the section name that is written as heading.
+    def __iter__(self):
+        for cf, rules in self._cf_rules.items():
+            cf.rules = rules
+            yield cf
+
+
+    def __getitem__(self, key):
         """
-        self.write_paragraph()
-        self.write_heading(name)
-        self.indent()
-        try:
-            yield
-        finally:
-            self.dedent()
-
-    @contextmanager
-    def indentation(self) -> cabc.Iterator[None]:
-        """A context manager that increases the indentation."""
-        self.indent()
-        try:
-            yield
-        finally:
-            self.dedent()
-
-    def getvalue(self) -> str:
-        """Returns the buffer contents."""
-        return "".join(self.buffer)
+        Get the rules for a cell range
+        """
+        if isinstance(key, str):
+            key = ConditionalFormatting(sqref=key)
+        return self._cf_rules[key]
 
 
-def join_options(options: cabc.Sequence[str]) -> tuple[str, bool]:
-    """Given a list of option strings this joins them in the most appropriate
-    way and returns them in the form ``(formatted_string,
-    any_prefix_is_slash)`` where the second item in the tuple is a flag that
-    indicates if any of the option prefixes was a slash.
-    """
-    rv = []
-    any_prefix_is_slash = False
+    def __delitem__(self, key):
+        key = ConditionalFormatting(sqref=key)
+        del self._cf_rules[key]
 
-    for opt in options:
-        prefix = _split_opt(opt)[0]
 
-        if prefix == "/":
-            any_prefix_is_slash = True
-
-        rv.append((len(prefix), opt))
-
-    rv.sort(key=lambda x: x[0])
-    return ", ".join(x[1] for x in rv), any_prefix_is_slash
+    def __setitem__(self, key, rule):
+        """
+        Add a rule for a cell range
+        """
+        self.add(key, rule)
