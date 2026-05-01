@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In – BPAS</title>
+    <style>
+        :root {
+            --background: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #2563eb;
+            --accent-dark: #1d4ed8;
+            --accent-light: #eff6ff;
+            --border-light: #e2e8f0;
+            --error: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--background); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 4rem; background: var(--card);
+            border-bottom: 1px solid var(--border-light);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .nav-logo { font-size: 1.35rem; font-weight: 800; color: var(--accent); text-decoration: none; }
+
+        .auth-container {
+            flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem 1rem;
+        }
+
+        .auth-card {
+            background: var(--card); border: 1px solid var(--border-light);
+            border-radius: 0.75rem; padding: 2.5rem; width: 100%; max-width: 420px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+        }
+
+        .auth-card h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.4rem; }
+        .auth-card .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.4rem; }
+
+        .form-group input {
+            width: 100%; padding: 0.65rem 0.9rem;
+            border: 1.5px solid var(--border-light); border-radius: 0.5rem;
+            font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+            background: var(--background);
+        }
+        .form-group input:focus { border-color: var(--accent); background: #fff; }
+
+        .btn-submit {
+            width: 100%; padding: 0.75rem;
+            background: var(--accent); color: #fff; border: none;
+            border-radius: 0.5rem; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: background 0.2s; margin-top: 0.5rem;
+        }
+        .btn-submit:hover { background: var(--accent-dark); }
+
+        .auth-footer { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted); }
+        .auth-footer a { color: var(--accent); font-weight: 600; text-decoration: none; }
+        .auth-footer a:hover { text-decoration: underline; }
+
+        .flash-error {
+            background: #fef2f2; border: 1px solid #fecaca;
+            color: var(--error); padding: 0.65rem 0.9rem; border-radius: 0.5rem;
+            font-size: 0.875rem; margin-bottom: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/" class="nav-logo">BPAS</a>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1>Welcome back</h1>
+            <p class="subtitle">Log in to your BPAS account to continue.</p>
+
+            {% with messages = get_flashed_messages(category_filter=["error"]) %}
+                {% if messages %}
+                    <div class="flash-error">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-submit">Log In →</button>
+            </form>
+
+            <p class="auth-footer">Don't have an account? <a href="/signup">Sign up free</a></p>
+        </div>
+    </div>
+</body>
+</html>

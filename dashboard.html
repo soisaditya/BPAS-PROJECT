@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-4">
+    <!-- Metric Cards -->
+    <div class="card">
+        <h3 class="metric-title">Average Order Value (AOV)</h3>
+        <div class="metric-value" id="kpi-aov">...</div>
+        <p class="metric-desc" id="kpi-aov-desc"></p>
+    </div>
+    <div class="card">
+        <h3 class="metric-title">Avg Logistics Delta</h3>
+        <div class="metric-value" id="kpi-logistics">...</div>
+        <p class="metric-desc" id="kpi-logistics-desc"></p>
+    </div>
+</div>
+
+<div class="grid grid-cols-2">
+    <div class="card h-96">
+        <div>
+            <h3 class="card-title">Monthly Revenue Growth</h3>
+            <p class="card-desc">Tracks total revenue generated each month to help identify sales trends, seasonality,
+                and overall business growth.</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+    <div class="card h-96">
+        <div>
+            <h3 class="card-title">Category Profitability</h3>
+            <p class="card-desc">Highlights the top product categories driving the most revenue, helping to focus
+                marketing and inventory efforts.</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-2">
+    <div class="card h-88">
+        <div>
+            <h3 class="card-title">Payment Distribution</h3>
+            <p class="card-desc">Shows the preferred payment methods used by customers, informing payment gateway and
+                checkout optimizations.</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="paymentChart"></canvas>
+        </div>
+    </div>
+    <div class="card h-88">
+        <div>
+            <h3 class="card-title">Order Health</h3>
+            <p class="card-desc">Displays the current status of all orders (e.g., delivered, shipped, canceled) to
+                monitor fulfillment efficiency.</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="healthChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    Chart.defaults.color = '#64748b'; // textMuted
+    Chart.defaults.borderColor = '#e2e8f0'; // borderLight
+
+    async function fetchData(url) {
+        const response = await fetch(url);
+        return response.json();
+    }
+
+    async function initDashboard() {
+        // AOV
+        const aovData = await fetchData('/api/kpi/aov');
+        document.getElementById('kpi-aov').innerText = `$${aovData.aov.toFixed(2)}`;
+        document.getElementById('kpi-aov-desc').innerText =
+            `On average, each customer spends $${aovData.aov.toFixed(2)} per order. ` +
+            `A higher AOV means customers are buying more per transaction — increasing this metric through upselling or bundles directly boosts revenue without needing more customers.`;
+
+        // Logistics
+        const logData = await fetchData('/api/kpi/logistics_delta');
+        const delta = logData.avg_delta_days;
+        document.getElementById('kpi-logistics').innerText = `${delta.toFixed(1)} Days`;
+        const sign = delta < 0 ? 'before' : 'after';
+        const perfLabel = delta < 0
+            ? `This is a positive sign — deliveries are arriving ${Math.abs(delta).toFixed(1)} days EARLIER than promised, which boosts customer satisfaction.`
+            : delta === 0
+                ? `Deliveries are arriving exactly on time on average — a perfect logistics score.`
+                : `Orders are arriving ${delta.toFixed(1)} days LATE on average — this signals potential supply chain or carrier delays that need attention.`;
+        document.getElementById('kpi-logistics-desc').innerText =
+            `The average difference between actual delivery date and the estimated date. ${perfLabel}`;
+
+        // Revenue Chart
+        const revData = await fetchData('/api/kpi/revenue_growth');
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'line',
+            data: {
+                labels: revData.map(d => d.month),
+                datasets: [{
+                    label: 'Revenue',
+                    data: revData.map(d => d.revenue),
+                    borderColor: '#3b82f6',
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Category Chart
+        const catData = await fetchData('/api/kpi/category_profitability');
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: catData.map(d => d.category),
+                datasets: [{
+                    label: 'Revenue',
+                    data: catData.map(d => d.total_revenue),
+                    backgroundColor: '#8b5cf6'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Payment Chart
+        const payData = await fetchData('/api/kpi/payment_distribution');
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: payData.map(d => d.payment_type),
+                datasets: [{
+                    data: payData.map(d => d.total_value),
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+        });
+
+        // Order Health
+        const healthData = await fetchData('/api/kpi/order_health');
+        new Chart(document.getElementById('healthChart'), {
+            type: 'pie',
+            data: {
+                labels: healthData.map(d => d.status),
+                datasets: [{
+                    data: healthData.map(d => d.count),
+                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#6b7280', '#3b82f6']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    initDashboard();
+</script>
+{% endblock %}

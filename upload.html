@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .upload-page-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .upload-page-subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; }
+
+    /* Tab Switcher */
+    .upload-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 2rem;
+        background: var(--background);
+        border: 1px solid var(--border-light);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        width: fit-content;
+    }
+
+    .upload-tab {
+        padding: 0.7rem 1.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .upload-tab:hover { color: var(--text-main); }
+    .upload-tab.active {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .upload-tab-icon { font-size: 1.1rem; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .dataset-info {
+        background: var(--accent-light);
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .dataset-info h3 { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 0.75rem; }
+    .dataset-info ul { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .dataset-info li { font-size: 0.875rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; }
+    .dataset-info li::before { content: "📄"; font-size: 0.8rem; margin-top: 1px; }
+    .dataset-info li span { color: var(--text-muted); font-size: 0.8rem; display: block; }
+
+    .upload-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+    }
+
+    .upload-card {
+        background: var(--card);
+        border: 1.5px dashed var(--border-light);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: border-color 0.2s;
+    }
+    .upload-card:hover { border-color: var(--accent); }
+    .upload-card.uploaded { border-color: #10b981; border-style: solid; background: #f0fdf4; }
+
+    .upload-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .upload-card h3 { font-size: 0.95rem; font-weight: 700; }
+    .upload-badge { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 99px; }
+    .badge-required { background: #fef3c7; color: #b45309; }
+    .badge-uploaded { background: #d1fae5; color: #065f46; }
+
+    .upload-card .required-cols {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.85rem;
+        line-height: 1.5;
+    }
+    .upload-card .required-cols strong { color: var(--text-main); font-weight: 600; }
+
+    .file-input-wrapper { position: relative; }
+    .file-input-wrapper input[type="file"] {
+        width: 100%;
+        font-size: 0.8rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border-light);
+        border-radius: 0.4rem;
+        background: var(--background);
+        cursor: pointer;
+    }
+    .file-input-wrapper input[type="file"]:focus { outline: none; border-color: var(--accent); }
+
+    .btn-analyze {
+        width: 100%;
+        padding: 0.9rem;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 0.6rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-analyze:hover { background: var(--accent-dark, #1d4ed8); }
+    .btn-analyze:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .flash-success {
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        color: #16a34a; padding: 0.75rem 1rem; border-radius: 0.5rem;
+        font-size: 0.9rem; margin-bottom: 1.5rem; font-weight: 500;
+    }
+    .flash-error {
+        background: #fef2f2; border: 1px solid #fecaca;
+        color: #dc2626; padding: 0.75rem 1rem; border-radius: 0.5rem;
+        font-size: 0.9rem; margin-bottom: 1.5rem;
+    }
+
+    .progress-note {
+        text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem;
+    }
+
+    /* Excel upload area */
+    .excel-dropzone {
+        background: var(--card);
+        border: 2px dashed var(--border-light);
+        border-radius: 0.75rem;
+        padding: 3rem 2rem;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        margin-bottom: 2rem;
+    }
+    .excel-dropzone:hover { border-color: var(--accent); background: var(--accent-light); }
+    .excel-dropzone.has-file { border-color: #10b981; border-style: solid; background: #f0fdf4; }
+
+    .excel-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .excel-dropzone h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .excel-dropzone p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .excel-filename {
+        font-size: 0.9rem; font-weight: 600; color: #10b981;
+        display: none; margin-top: 0.75rem;
+    }
+    .excel-filename.visible { display: block; }
+
+    .excel-dropzone input[type="file"] {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+    }
+
+    .sheet-requirements {
+        background: var(--accent-light);
+        border: 1px solid #bfdbfe;
+        border-radius: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .sheet-requirements h3 { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 0.75rem; }
+    .sheet-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .sheet-table th {
+        text-align: left; padding: 0.5rem 0.75rem;
+        border-bottom: 2px solid #bfdbfe;
+        color: var(--accent); font-weight: 700; font-size: 0.75rem;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .sheet-table td {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: var(--text-main);
+    }
+    .sheet-table tr:last-child td { border-bottom: none; }
+    .sheet-table .col-pills { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .sheet-table .col-pill {
+        font-size: 0.7rem; font-weight: 600;
+        background: #fff; color: var(--accent);
+        padding: 0.15rem 0.5rem; border-radius: 99px;
+        border: 1px solid #bfdbfe; white-space: nowrap;
+    }
+    .sheet-badge-req { font-size: 0.65rem; font-weight: 700; background: #fef3c7; color: #b45309; padding: 0.1rem 0.4rem; border-radius: 99px; }
+    .sheet-badge-opt { font-size: 0.65rem; font-weight: 700; background: #f1f5f9; color: #64748b; padding: 0.1rem 0.4rem; border-radius: 99px; }
+
+    @media (max-width: 768px) { .upload-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div>
+    <h1 class="upload-page-title">Upload Your Dataset</h1>
+    <p class="upload-page-subtitle">Upload your data as multiple CSV files or a single Excel workbook with sheets.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- Tab Switcher -->
+    <div class="upload-tabs">
+        <button class="upload-tab active" onclick="switchTab('csv')" id="tab-csv">
+            <span class="upload-tab-icon">📄</span> Multiple CSVs
+        </button>
+        <button class="upload-tab" onclick="switchTab('excel')" id="tab-excel">
+            <span class="upload-tab-icon">📊</span> Single Excel File
+        </button>
+    </div>
+
+    <!-- ========== CSV TAB ========== -->
+    <div class="tab-content active" id="content-csv">
+        <div class="dataset-info">
+            <h3>📊 Required Dataset: Olist E-Commerce (or Compatible)</h3>
+            <ul>
+                <li><div><strong>orders.csv</strong><span>order_id · customer_id · order_status · order_purchase_timestamp · order_delivered_customer_date · order_estimated_delivery_date</span></div></li>
+                <li><div><strong>payments.csv</strong><span>order_id · payment_type · payment_value</span></div></li>
+                <li><div><strong>order_items.csv</strong><span>order_id · product_id · price</span></div></li>
+                <li><div><strong>products.csv</strong><span>product_id · product_category_name</span></div></li>
+                <li><div><strong>customers.csv</strong><span>customer_id · customer_state · customer_city</span></div></li>
+                <li><div><strong>reviews.csv</strong> (optional)<span>order_id · review_score</span></div></li>
+            </ul>
+        </div>
+
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="csvForm">
+            <input type="hidden" name="upload_mode" value="csv">
+            <div class="upload-grid">
+                <!-- Orders -->
+                <div class="upload-card" id="card-orders">
+                    <div class="upload-card-header">
+                        <h3>Orders CSV</h3>
+                        <span class="upload-badge badge-required">Required</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>order_id, customer_id, order_status, order_purchase_timestamp, order_delivered_customer_date, order_estimated_delivery_date</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="orders" accept=".csv" required onchange="markUploaded('card-orders', this)">
+                    </div>
+                </div>
+
+                <!-- Payments -->
+                <div class="upload-card" id="card-payments">
+                    <div class="upload-card-header">
+                        <h3>Payments CSV</h3>
+                        <span class="upload-badge badge-required">Required</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>order_id, payment_type, payment_value</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="payments" accept=".csv" required onchange="markUploaded('card-payments', this)">
+                    </div>
+                </div>
+
+                <!-- Order Items -->
+                <div class="upload-card" id="card-items">
+                    <div class="upload-card-header">
+                        <h3>Order Items CSV</h3>
+                        <span class="upload-badge badge-required">Required</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>order_id, product_id, price</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="order_items" accept=".csv" required onchange="markUploaded('card-items', this)">
+                    </div>
+                </div>
+
+                <!-- Products -->
+                <div class="upload-card" id="card-products">
+                    <div class="upload-card-header">
+                        <h3>Products CSV</h3>
+                        <span class="upload-badge badge-required">Required</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>product_id, product_category_name</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="products" accept=".csv" required onchange="markUploaded('card-products', this)">
+                    </div>
+                </div>
+
+                <!-- Customers -->
+                <div class="upload-card" id="card-customers">
+                    <div class="upload-card-header">
+                        <h3>Customers CSV</h3>
+                        <span class="upload-badge badge-required">Required</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>customer_id, customer_state, customer_city</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="customers" accept=".csv" required onchange="markUploaded('card-customers', this)">
+                    </div>
+                </div>
+
+                <!-- Reviews (Optional) -->
+                <div class="upload-card" id="card-reviews">
+                    <div class="upload-card-header">
+                        <h3>Reviews CSV</h3>
+                        <span class="upload-badge badge-required" style="background:#f1f5f9;color:#64748b;">Optional</span>
+                    </div>
+                    <p class="required-cols">Columns: <strong>order_id, review_score</strong></p>
+                    <div class="file-input-wrapper">
+                        <input type="file" name="reviews" accept=".csv" onchange="markUploaded('card-reviews', this)">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-analyze" id="csvAnalyzeBtn">
+                🚀 Process & Analyse Data
+            </button>
+            <p class="progress-note">This may take a few seconds depending on dataset size.</p>
+        </form>
+    </div>
+
+    <!-- ========== EXCEL TAB ========== -->
+    <div class="tab-content" id="content-excel">
+        <div class="sheet-requirements">
+            <h3>📊 Excel Workbook Sheet Requirements</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+                Your <strong>.xlsx</strong> file must contain one sheet per data table. Name each sheet as shown below.
+            </p>
+            <table class="sheet-table">
+                <thead>
+                    <tr>
+                        <th>Sheet Name</th>
+                        <th>Status</th>
+                        <th>Required Columns</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>orders</strong></td>
+                        <td><span class="sheet-badge-req">Required</span></td>
+                        <td><div class="col-pills"><span class="col-pill">order_id</span><span class="col-pill">customer_id</span><span class="col-pill">order_status</span><span class="col-pill">order_purchase_timestamp</span><span class="col-pill">order_delivered_customer_date</span><span class="col-pill">order_estimated_delivery_date</span></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>payments</strong></td>
+                        <td><span class="sheet-badge-req">Required</span></td>
+                        <td><div class="col-pills"><span class="col-pill">order_id</span><span class="col-pill">payment_type</span><span class="col-pill">payment_value</span></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>order_items</strong></td>
+                        <td><span class="sheet-badge-req">Required</span></td>
+                        <td><div class="col-pills"><span class="col-pill">order_id</span><span class="col-pill">product_id</span><span class="col-pill">price</span></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>products</strong></td>
+                        <td><span class="sheet-badge-req">Required</span></td>
+                        <td><div class="col-pills"><span class="col-pill">product_id</span><span class="col-pill">product_category_name</span></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>customers</strong></td>
+                        <td><span class="sheet-badge-req">Required</span></td>
+                        <td><div class="col-pills"><span class="col-pill">customer_id</span><span class="col-pill">customer_state</span><span class="col-pill">customer_city</span></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>reviews</strong></td>
+                        <td><span class="sheet-badge-opt">Optional</span></td>
+                        <td><div class="col-pills"><span class="col-pill">order_id</span><span class="col-pill">review_score</span></div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="excelForm">
+            <input type="hidden" name="upload_mode" value="excel">
+
+            <div class="excel-dropzone" id="excelDropzone" onclick="document.getElementById('excelFileInput').click()">
+                <input type="file" id="excelFileInput" name="excel_file" accept=".xlsx,.xls" required>
+                <div class="excel-icon">📊</div>
+                <h3>Drop your Excel file here or click to browse</h3>
+                <p>Supports <strong>.xlsx</strong> and <strong>.xls</strong> files</p>
+                <div class="excel-filename" id="excelFileName"></div>
+            </div>
+
+            <button type="submit" class="btn-analyze" id="excelAnalyzeBtn">
+                🚀 Process & Analyse Excel Data
+            </button>
+            <p class="progress-note">This may take a few seconds depending on dataset size.</p>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Tab switching
+    function switchTab(mode) {
+        document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + mode).classList.add('active');
+        document.getElementById('content-' + mode).classList.add('active');
+    }
+
+    // CSV upload card state
+    function markUploaded(cardId, input) {
+        const card = document.getElementById(cardId);
+        if (input.files.length > 0) {
+            card.classList.add('uploaded');
+            const badge = card.querySelector('.upload-badge');
+            badge.textContent = '✓ Ready';
+            badge.className = 'upload-badge badge-uploaded';
+        }
+    }
+
+    // Excel file input handler
+    document.getElementById('excelFileInput').addEventListener('change', function() {
+        const dropzone = document.getElementById('excelDropzone');
+        const nameEl = document.getElementById('excelFileName');
+        if (this.files.length > 0) {
+            dropzone.classList.add('has-file');
+            nameEl.textContent = '✓ ' + this.files[0].name;
+            nameEl.classList.add('visible');
+        } else {
+            dropzone.classList.remove('has-file');
+            nameEl.classList.remove('visible');
+        }
+    });
+
+    // Drag and drop for Excel
+    const dropzone = document.getElementById('excelDropzone');
+    dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.style.borderColor = 'var(--accent)';
+        this.style.background = 'var(--accent-light)';
+    });
+    dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '';
+        this.style.background = '';
+    });
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.borderColor = '';
+        this.style.background = '';
+        const input = document.getElementById('excelFileInput');
+        if (e.dataTransfer.files.length > 0) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // Form submit loading states
+    document.getElementById('csvForm').addEventListener('submit', function() {
+        const btn = document.getElementById('csvAnalyzeBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Processing... please wait';
+    });
+
+    document.getElementById('excelForm').addEventListener('submit', function() {
+        const btn = document.getElementById('excelAnalyzeBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Processing... please wait';
+    });
+</script>
+{% endblock %}

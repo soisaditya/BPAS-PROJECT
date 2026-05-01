@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPAS – Business Performance Analytics Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --background: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #2563eb;
+            --accent-dark: #1d4ed8;
+            --accent-light: #eff6ff;
+            --border-light: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-main);
+        }
+
+        /* ---- NAVBAR ---- */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 4rem;
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .nav-logo {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-outline {
+            padding: 0.5rem 1.25rem;
+            border: 1.5px solid var(--accent);
+            color: var(--accent);
+            background: transparent;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-primary {
+            padding: 0.5rem 1.25rem;
+            border: 1.5px solid var(--accent);
+            color: #fff;
+            background: var(--accent);
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-dark);
+        }
+
+        /* ---- HERO ---- */
+        .hero {
+            text-align: center;
+            padding: 6rem 2rem 4rem;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.3rem 0.85rem;
+            border-radius: 99px;
+            margin-bottom: 1.5rem;
+            border: 1px solid #bfdbfe;
+        }
+
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            line-height: 1.15;
+            color: var(--text-main);
+            margin-bottom: 1.25rem;
+            letter-spacing: -1px;
+        }
+
+        .hero h1 span {
+            color: var(--accent);
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn-hero-primary {
+            padding: 0.75rem 2rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-hero-primary:hover { background: var(--accent-dark); }
+
+        .btn-hero-outline {
+            padding: 0.75rem 2rem;
+            background: transparent;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+            border-radius: 0.6rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .btn-hero-outline:hover { background: var(--accent-light); }
+
+        /* ---- FEATURES ---- */
+        .features {
+            max-width: 1100px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .features-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem;
+            padding: 1.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .feature-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: var(--accent-light);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .feature-icon svg {
+            color: var(--accent);
+        }
+
+        .feature-card h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* ---- DATASET REQUIREMENTS ---- */
+        .dataset-section {
+            max-width: 1100px;
+            margin: 2rem auto 0;
+            padding: 0 2rem;
+        }
+
+        .dataset-section h2 {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .dataset-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .dataset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .dataset-card {
+            background: var(--card);
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dataset-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+
+        .dataset-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #8b5cf6);
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+
+        .dataset-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.85rem;
+        }
+
+        .dataset-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dataset-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-req {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .badge-opt {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .dataset-card p.ds-desc {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .field-list {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .field-list li {
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 0.25rem 0.65rem;
+            border-radius: 99px;
+            border: 1px solid #bfdbfe;
+            white-space: nowrap;
+        }
+
+        .dataset-note {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+            border: 1px solid #c7d2fe;
+            border-radius: 0.75rem;
+            font-size: 0.88rem;
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .dataset-note strong {
+            color: var(--accent);
+        }
+
+        /* ---- CTA SECTION ---- */
+        .cta-section {
+            background: var(--accent);
+            color: #fff;
+            text-align: center;
+            padding: 4rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .cta-section h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1rem;
+            opacity: 0.85;
+            margin-bottom: 2rem;
+        }
+
+        .btn-cta {
+            padding: 0.75rem 2.5rem;
+            background: #fff;
+            color: var(--accent);
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-cta:hover { opacity: 0.9; }
+
+        /* ---- FOOTER ---- */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        @media (max-width: 768px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .dataset-grid { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 2.2rem; }
+            nav { padding: 1rem 1.5rem; }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .dataset-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav>
+        <span class="nav-logo">BPAS</span>
+        <div class="nav-links">
+            <a href="/login" class="btn-outline">Log In</a>
+            <a href="/signup" class="btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-badge">✦ Business Intelligence, Simplified</div>
+        <h1>Turn Raw Data Into <span>Actionable Insights</span></h1>
+        <p>BPAS helps you monitor revenue growth, track logistics performance, understand customer behavior, and make smarter decisions — all from a single, powerful dashboard.</p>
+        <div class="hero-actions">
+            <a href="/signup" class="btn-hero-primary">Start for Free →</a>
+            <a href="/login" class="btn-hero-outline">Log In</a>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features">
+        <h2>Everything You Need to Analyze Performance</h2>
+        <p class="features-subtitle">8 pre-built KPI modules, ready to use out of the box.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <h3>Monthly Revenue Growth</h3>
+                <p>Track total revenue generated each month to identify trends and seasonality patterns.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                </div>
+                <h3>Category Profitability</h3>
+                <p>Identify your top-performing product categories by revenue contribution.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                </div>
+                <h3>Average Order Value</h3>
+                <p>Measure how much each customer spends per transaction to optimize sales strategy.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+                <h3>Logistics Delta</h3>
+                <p>Monitor delivery performance by comparing actual vs estimated delivery dates.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <h3>Geographic Spend</h3>
+                <p>Visualize regional sales distribution to focus efforts on high-value markets.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="20" height="20" fill="none" stroke="#2563eb" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4l3 3"/></svg>
+                </div>
+                <h3>Order Health & Payments</h3>
+                <p>Understand order fulfillment status and payment method distribution at a glance.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- DATASET REQUIREMENTS -->
+    <section class="dataset-section" id="dataset-requirements">
+        <h2>Prepare Your Dataset</h2>
+        <p class="dataset-subtitle">To unlock the full power of BPAS analytics, your dataset should include the following 6 CSV files with the specified columns. Upload them after signing in.</p>
+
+        <div class="dataset-grid">
+            <!-- Orders -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>📦 Orders</h3>
+                    <span class="dataset-badge badge-req">Required</span>
+                </div>
+                <p class="ds-desc">Core order records with timestamps for purchase, delivery, and estimated delivery tracking.</p>
+                <ul class="field-list">
+                    <li>order_id</li>
+                    <li>customer_id</li>
+                    <li>order_status</li>
+                    <li>order_purchase_timestamp</li>
+                    <li>order_delivered_customer_date</li>
+                    <li>order_estimated_delivery_date</li>
+                </ul>
+            </div>
+
+            <!-- Payments -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>💳 Payments</h3>
+                    <span class="dataset-badge badge-req">Required</span>
+                </div>
+                <p class="ds-desc">Transaction-level payment data used for revenue and payment method analytics.</p>
+                <ul class="field-list">
+                    <li>order_id</li>
+                    <li>payment_type</li>
+                    <li>payment_value</li>
+                </ul>
+            </div>
+
+            <!-- Order Items -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>🛒 Order Items</h3>
+                    <span class="dataset-badge badge-req">Required</span>
+                </div>
+                <p class="ds-desc">Line-item details linking orders to products with pricing for profitability analysis.</p>
+                <ul class="field-list">
+                    <li>order_id</li>
+                    <li>product_id</li>
+                    <li>price</li>
+                </ul>
+            </div>
+
+            <!-- Products -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>📋 Products</h3>
+                    <span class="dataset-badge badge-req">Required</span>
+                </div>
+                <p class="ds-desc">Product catalog with category information for category-level profitability breakdowns.</p>
+                <ul class="field-list">
+                    <li>product_id</li>
+                    <li>product_category_name</li>
+                </ul>
+            </div>
+
+            <!-- Customers -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>👥 Customers</h3>
+                    <span class="dataset-badge badge-req">Required</span>
+                </div>
+                <p class="ds-desc">Customer geography data enabling regional spend analysis and market insights.</p>
+                <ul class="field-list">
+                    <li>customer_id</li>
+                    <li>customer_state</li>
+                    <li>customer_city</li>
+                </ul>
+            </div>
+
+            <!-- Reviews -->
+            <div class="dataset-card">
+                <div class="dataset-card-header">
+                    <h3>⭐ Reviews</h3>
+                    <span class="dataset-badge badge-opt">Optional</span>
+                </div>
+                <p class="ds-desc">Customer review scores to correlate satisfaction with product pricing and categories.</p>
+                <ul class="field-list">
+                    <li>order_id</li>
+                    <li>review_score</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="dataset-note">
+            💡 <strong>Tip:</strong> Upload your data as <strong>6 separate CSV files</strong> or as a <strong>single Excel workbook (.xlsx)</strong> with one sheet per table. Column names must match exactly. The format is compatible with the <strong>Olist E-Commerce dataset</strong> from Kaggle.
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <h2>Ready to See Your Business Clearly?</h2>
+        <p>Create your free account and upload your data in minutes.</p>
+        <a href="/signup" class="btn-cta">Get Started Free</a>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2026 BPAS — Business Performance Analytics Portal. By Aditya Srivastava student @BBDU.</p>
+    </footer>
+
+</body>
+</html>
